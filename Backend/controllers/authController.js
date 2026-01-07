@@ -6,6 +6,10 @@ const { validationResult } = require('express-validator');
 
 // Helper to generate JWT token
 const generateToken = (userId, role) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET is not set in environment');
+  }
+
   return jwt.sign(
     { id: userId, role },
     process.env.JWT_SECRET,

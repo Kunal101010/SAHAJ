@@ -22,6 +22,13 @@ exports.protect = async (req, res, next) => {
   }
 
   try {
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not set in environment');
+      return res.status(500).json({
+        success: false,
+        message: 'Server misconfiguration: JWT_SECRET not set'
+      });
+    }
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 

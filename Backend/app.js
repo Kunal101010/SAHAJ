@@ -6,6 +6,8 @@ const cors = require("cors");
 const authRoutes = require('./routes/authRoutes');
 const maintenanceRoutes = require('./routes/maintenanceRoutes');
 const adminRoutes = require('./routes/adminRoutes')
+const facilityRoutes = require('./routes/facilityRoutes');
+const bookingRoutes = require('./routes/bookingRoutes');
 
 
 
@@ -35,6 +37,8 @@ app.get("/", (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/facilities', facilityRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 const port = process.env.PORT
 //listen server
