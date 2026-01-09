@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { getCurrentUser } from '../utils/auth';
+import Toast from './Toast';
 
-function ViewEditRequestModal({ isOpen, onClose, requestId }) {
+function ViewEditRequestModal({ isOpen, onClose, requestId, onRequestUpdated }) {
   const [formData, setFormData] = useState({
     title: '',
     type: '',
@@ -12,17 +13,35 @@ function ViewEditRequestModal({ isOpen, onClose, requestId }) {
     description: '',
     status: '',
   });
+  const [technicians, setTechnicians] = useState([]);
+  const [selectedTechnician, setSelectedTechnician] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 
-  const user = getCurrentUser();
+  const showToast = (message, type = 'success') => {
+    setToast({ visible: true, message, type });
+  };  const user = getCurrentUser();
 
   useEffect(() => {
     if (isOpen && requestId) {
       fetchRequest();
+      // Fetch technicians for admin/manager
+      if (['manager', 'admin'].includes(user?.role)) {
+        fetchTechnicians();
+      }
     }
   }, [isOpen, requestId]);
+
+  const fetchTechnicians = async () => {
+    try {
+      const res = await api.get('/api/maintenance/technicians');
+      setTechnicians(res.data.data || []);
+    } catch (err) {
+      console.error('Error fetching technicians:', err);
+    }
+  };
 
   const fetchRequest = async () => {
     setLoading(true);
@@ -34,6 +53,7 @@ function ViewEditRequestModal({ isOpen, onClose, requestId }) {
       const res = await api.get(`/api/maintenance/requests/${requestId}`);
       console.log('Request data:', res.data.data);
       setFormData(res.data.data);
+      setSelectedTechnician(res.data.data.assignedTo?._id || '');
     } catch (err) {
       console.error('Error fetching request:', err);
       setError(err.response?.data?.message || 'Failed to load request details');
@@ -44,6 +64,29 @@ function ViewEditRequestModal({ isOpen, onClose, requestId }) {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleAssignTechnician = async () => {
+    if (!selectedTechnician) {
+      showToast('Please select a technician', 'warning');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await api.patch(`/api/maintenance/requests/${requestId}/assign`, {
+        technicianId: selectedTechnician
+      });
+      showToast('Technician assigned successfully!', 'success');
+      fetchRequest();
+      if (onRequestUpdated) onRequestUpdated();
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || 'Failed to assign technician';
+      setError(errorMsg);
+      showToast(errorMsg, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -58,12 +101,14 @@ function ViewEditRequestModal({ isOpen, onClose, requestId }) {
       }
       
       await api.patch(`/api/maintenance/requests/${requestId}`, updateData);
-      alert('Request updated successfully!');
+      showToast('Request updated successfully!', 'success');
       setIsEditing(false);
+      if (onRequestUpdated) onRequestUpdated();
       onClose();
-      window.location.reload(); // Simple refresh to show updated list
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update request');
+      const errorMsg = err.response?.data?.message || 'Failed to update request';
+      setError(errorMsg);
+      showToast(errorMsg, 'error');
     } finally {
       setLoading(false);
     }
@@ -75,7 +120,7 @@ function ViewEditRequestModal({ isOpen, onClose, requestId }) {
     (user?.role === 'employee' &&
       formData.status === 'Pending' &&
       formData.submittedBy?._id === user?.id) ||
-    ['technician', 'manager', 'admin'].includes(user?.role);
+    ['manager', 'admin'].includes(user?.role);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -109,7 +154,7 @@ function ViewEditRequestModal({ isOpen, onClose, requestId }) {
                 type="text"
                 value={formData.title || ''}
                 onChange={handleChange}
-                disabled={!isEditing}
+                disabled={!isEditing || user?.role === 'technician'}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
               />
             </div>
@@ -123,7 +168,7 @@ function ViewEditRequestModal({ isOpen, onClose, requestId }) {
                 name="type"
                 value={formData.type || ''}
                 onChange={handleChange}
-                disabled={!isEditing}
+                disabled={!isEditing || user?.role === 'technician'}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
               >
                 <option value="Electrical">Electrical</option>
@@ -144,7 +189,7 @@ function ViewEditRequestModal({ isOpen, onClose, requestId }) {
                 name="priority"
                 value={formData.priority || ''}
                 onChange={handleChange}
-                disabled={!isEditing}
+                disabled={!isEditing || user?.role === 'technician'}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
               >
                 <option value="Low">Low</option>
@@ -164,7 +209,7 @@ function ViewEditRequestModal({ isOpen, onClose, requestId }) {
                 type="text"
                 value={formData.location || ''}
                 onChange={handleChange}
-                disabled={!isEditing}
+                disabled={!isEditing || user?.role === 'technician'}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
               />
             </div>
@@ -179,12 +224,12 @@ function ViewEditRequestModal({ isOpen, onClose, requestId }) {
                 value={formData.description || ''}
                 onChange={handleChange}
                 rows={4}
-                disabled={!isEditing}
+                disabled={!isEditing || user?.role === 'technician'}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 resize-none"
               />
             </div>
 
-            {/* Status */}
+            {/* Status - Technician cannot edit */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Status
@@ -193,7 +238,7 @@ function ViewEditRequestModal({ isOpen, onClose, requestId }) {
                 name="status"
                 value={formData.status || 'Pending'}
                 onChange={handleChange}
-                disabled={!isEditing || user?.role === 'employee'}
+                disabled={!isEditing || user?.role === 'employee' || user?.role === 'technician'}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
               >
                 <option value="Pending">Pending</option>
@@ -201,6 +246,42 @@ function ViewEditRequestModal({ isOpen, onClose, requestId }) {
                 <option value="Completed">Completed</option>
               </select>
             </div>
+
+            {/* Assign Technician (Manager/Admin only) */}
+            {['manager', 'admin'].includes(user?.role) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Assign Technician
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    value={selectedTechnician}
+                    onChange={(e) => setSelectedTechnician(e.target.value)}
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select a technician...</option>
+                    {technicians.map((tech) => (
+                      <option key={tech._id} value={tech._id}>
+                        {tech.firstName} {tech.lastName} ({tech.username})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleAssignTechnician}
+                    disabled={loading || !selectedTechnician}
+                    className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium disabled:opacity-50"
+                  >
+                    Assign
+                  </button>
+                </div>
+                {formData.assignedTo && (
+                  <p className="text-sm text-green-600 mt-2">
+                    Assigned to: {formData.assignedTo.firstName} {formData.assignedTo.lastName}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Buttons */}
             <div className="flex justify-end space-x-4 pt-4">
@@ -248,6 +329,13 @@ function ViewEditRequestModal({ isOpen, onClose, requestId }) {
           </form>
         )}
       </div>
+
+      <Toast 
+        isVisible={toast.visible} 
+        onClose={() => setToast({ ...toast, visible: false })}
+        message={toast.message}
+        type={toast.type}
+      />
     </div>
   );
 }

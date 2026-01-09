@@ -7,6 +7,7 @@ import Sidebar from '../components/Sidebar';
 import TopBar from '../components/TopBar';
 import NewRequestModal from '../components/NewRequestModal';
 import ViewEditRequestModal from '../components/ViewEditRequestModal';
+import Toast from '../components/Toast';
 
 function MaintenanceRequestsPage() {
   const navigate = useNavigate();
@@ -20,6 +21,8 @@ function MaintenanceRequestsPage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
   useEffect(() => {
     if (!currentUser) {
@@ -43,11 +46,30 @@ function MaintenanceRequestsPage() {
     }
   };
 
-  const filteredRequests = requests.filter((req) =>
-    req.title?.toLowerCase().includes(search.toLowerCase()) ||
-    req.description?.toLowerCase().includes(search.toLowerCase()) ||
-    req.location?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredRequests = requests
+    .filter((req) =>
+      req.title?.toLowerCase().includes(search.toLowerCase()) ||
+      req.description?.toLowerCase().includes(search.toLowerCase()) ||
+      req.location?.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      const statusOrder = { 'Pending': 0, 'In Progress': 1, 'Completed': 2 };
+      return (statusOrder[a.status] || 3) - (statusOrder[b.status] || 3);
+    });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ isVisible: true, message, type });
+  };
+
+  const handleRequestCreated = () => {
+    setIsModalOpen(false);
+    fetchRequests();
+  };
+
+  const handleRequestUpdated = () => {
+    setIsViewModalOpen(false);
+    fetchRequests();
+  };
 
   return (
     <div className="flex">
@@ -165,6 +187,7 @@ function MaintenanceRequestsPage() {
       <NewRequestModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onRequestCreated={handleRequestCreated}
       />
 
       <ViewEditRequestModal
@@ -174,6 +197,14 @@ function MaintenanceRequestsPage() {
           setSelectedRequestId(null);
         }}
         requestId={selectedRequestId}
+        onRequestUpdated={handleRequestUpdated}
+      />
+
+      <Toast
+        isVisible={toast.isVisible}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, isVisible: false })}
       />
     </div>
   );

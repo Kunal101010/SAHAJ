@@ -1,7 +1,16 @@
-// controllers/maintenanceController.js
-
 const MaintenanceRequest = require('../model/maintenanceRequest');
 const { validationResult } = require('express-validator');
+
+const handleError = (res, err, message = 'Server error') => {
+  console.error('Error:', err);
+  res.status(500).json({ success: false, message });
+};
+
+const populateRequest = (query) => {
+  return query
+    .populate('submittedBy', 'username firstName lastName')
+    .populate('assignedTo', 'username firstName lastName');
+};
 
 exports.createRequest = async (req, res) => {
   const errors = validationResult(req);
@@ -15,62 +24,62 @@ exports.createRequest = async (req, res) => {
       submittedBy: req.user.id
     });
     await request.save();
-
     res.status(201).json({ success: true, data: request });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    handleError(res, err);
   }
 };
 
 exports.getRequests = async (req, res) => {
   try {
-    let query = {};
-    // Everyone only sees their own requests
-    query.submittedBy = req.user.id;
-
-    const requests = await MaintenanceRequest.find(query)
-      .populate('submittedBy', 'username firstName lastName')
-      .populate('assignedTo', 'username firstName lastName')
-      .sort({ createdAt: -1 });
+    const requests = await populateRequest(
+      MaintenanceRequest.find({ submittedBy: req.user.id })
+    ).sort({ createdAt: -1 });
 
     res.json({ success: true, data: requests });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    handleError(res, err);
+  }
+};
+
+exports.getAssignedRequests = async (req, res) => {
+  try {
+    const requests = await populateRequest(
+      MaintenanceRequest.find({ assignedTo: req.user.id })
+    ).sort({ createdAt: -1 });
+
+    res.json({ success: true, data: requests });
+  } catch (err) {
+    handleError(res, err);
   }
 };
 
 exports.getRequestById = async (req, res) => {
   try {
-    const request = await MaintenanceRequest.findById(req.params.id)
-      .populate('submittedBy', 'username firstName lastName')
-      .populate('assignedTo', 'username firstName lastName');
+    const request = await populateRequest(
+      MaintenanceRequest.findById(req.params.id)
+    );
 
     if (!request) {
       return res.status(404).json({ success: false, message: 'Request not found' });
     }
 
-    // Debug logging
-    console.log('User ID:', req.user.id);
-    console.log('User Role:', req.user.role);
-    console.log('Request submittedBy:', request.submittedBy);
-    console.log('Request assignedTo:', request.assignedTo);
-
-    // Check access - more permissive for viewing
     if (req.user.role === 'employee') {
-      const submittedById = request.submittedBy._id ? request.submittedBy._id.toString() : request.submittedBy.toString();
+      const submittedById = request.submittedBy._id 
+        ? request.submittedBy._id.toString() 
+        : request.submittedBy.toString();
+        
       if (submittedById !== req.user.id) {
-        return res.status(403).json({ success: false, message: 'Not authorized - can only view your own requests' });
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Not authorized - can only view your own requests' 
+        });
       }
     }
-    // Technicians can view any request (not just assigned ones) for details
-    // Managers and Admins can view any request
 
     res.json({ success: true, data: request });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    handleError(res, err);
   }
 };
 
@@ -82,26 +91,27 @@ exports.updateRequest = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Request not found' });
     }
 
-    // Only the user who submitted the request can update it
     if (request.submittedBy.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Only the request submitter can update this request' });
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Only the request submitter can update this request' 
+      });
     }
 
-    // If status is no longer Pending, no updates allowed
     if (request.status !== 'Pending') {
-      return res.status(403).json({ success: false, message: 'Cannot edit request that is not pending' });
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Cannot edit request that is not pending' 
+      });
     }
 
-    // Cannot change status field
     const { status, ...updateData } = req.body;
     Object.assign(request, updateData);
-
     await request.save();
 
     res.json({ success: true, data: request });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    handleError(res, err);
   }
 };
 
@@ -113,7 +123,6 @@ exports.updateStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Request not found' });
     }
 
-    // Only technicians, managers, admins can update status
     if (!['technician', 'manager', 'admin'].includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
@@ -127,26 +136,60 @@ exports.updateStatus = async (req, res) => {
 
     res.json({ success: true, data: request });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    handleError(res, err);
   }
 };
 
-// Dashboard Stats Endpoints
+exports.assignTechnician = async (req, res) => {
+  try {
+    const { technicianId } = req.body;
+
+    if (!technicianId) {
+      return res.status(400).json({ success: false, message: 'Technician ID is required' });
+    }
+
+    const request = await MaintenanceRequest.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    if (!['manager', 'admin'].includes(req.user.role)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Only managers and admins can assign technicians' 
+      });
+    }
+
+    request.assignedTo = technicianId;
+    request.status = 'In Progress';
+    await request.save();
+
+    const populatedRequest = await populateRequest(
+      MaintenanceRequest.findById(request._id)
+    );
+
+    res.json({ success: true, data: populatedRequest });
+  } catch (err) {
+    handleError(res, err);
+  }
+};
 
 exports.getStats = async (req, res) => {
   try {
-    const total = await MaintenanceRequest.countDocuments();
-    const pending = await MaintenanceRequest.countDocuments({ status: 'Pending' });
-    const inProgress = await MaintenanceRequest.countDocuments({ status: 'In Progress' });
-    const completed = await MaintenanceRequest.countDocuments({ status: 'Completed' });
+    const [total, pending, inProgress, completed] = await Promise.all([
+      MaintenanceRequest.countDocuments(),
+      MaintenanceRequest.countDocuments({ status: 'Pending' }),
+      MaintenanceRequest.countDocuments({ status: 'In Progress' }),
+      MaintenanceRequest.countDocuments({ status: 'Completed' })
+    ]);
 
     res.json({
       success: true,
       data: { total, pending, inProgress, completed }
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    handleError(res, err);
   }
 };
 
@@ -164,7 +207,7 @@ exports.getMonthlyTrend = async (req, res) => {
 
     res.json({ success: true, data: trend });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    handleError(res, err);
   }
 };
 
@@ -182,7 +225,7 @@ exports.getByCategory = async (req, res) => {
 
     res.json({ success: true, data: categories });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    handleError(res, err);
   }
 };
 
@@ -199,7 +242,7 @@ exports.getStatusDistribution = async (req, res) => {
 
     res.json({ success: true, data: distribution });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    handleError(res, err);
   }
 };
 
@@ -212,18 +255,18 @@ exports.getRecent = async (req, res) => {
 
     res.json({ success: true, data: recent });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    handleError(res, err);
   }
 };
 
 exports.getAllRequests = async (req, res) => {
   try {
-    const requests = await MaintenanceRequest.find()
-      .populate('submittedBy', 'firstName lastName username email')
-      .populate('assignedTo', 'firstName lastName')
-      .sort({ createdAt: -1 });
+    const requests = await populateRequest(
+      MaintenanceRequest.find()
+    ).sort({ createdAt: -1 });
+
     res.json({ success: true, data: requests });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    handleError(res, err);
   }
 };

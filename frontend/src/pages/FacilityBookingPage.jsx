@@ -4,6 +4,7 @@ import { getCurrentUser } from '../utils/auth';
 import Sidebar from '../components/Sidebar';
 import TopBar from '../components/TopBar';
 import BookFacilityModal from '../components/BookFacilityModal';
+import Toast from '../components/Toast';
 import api from '../services/api'; // Import API service
 import { useMemo } from 'react';
 
@@ -17,6 +18,7 @@ function FacilityBookingPage() {
   const [selectedFacility, setSelectedFacility] = useState(null); // For modal
   const [loading, setLoading] = useState(true);            // Loading state
   const [error, setError] = useState(null);                // Error handling
+  const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
   useEffect(() => {
     if (!user) {
@@ -115,9 +117,13 @@ function FacilityBookingPage() {
   const goPrev = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   const goNext = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
 
+  const showToast = (message, type = 'success') => {
+    setToast({ isVisible: true, message, type });
+  };
+
   const openModal = (facility) => {
     if (!selectedDate) {
-      alert('Please select a date first!');
+      showToast('Please select a date first!', 'warning');
       return;
     }
     setSelectedFacility(facility);
@@ -309,6 +315,13 @@ function FacilityBookingPage() {
         selectedDate={selectedDate}
         initialStartTime={selectedFacility && selectedDate ? new Date(selectedDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', ':') : ''}
         initialEndTime={''}
+      />
+
+      <Toast
+        isVisible={toast.isVisible}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, isVisible: false })}
       />
     </div>
   );

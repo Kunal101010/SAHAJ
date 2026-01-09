@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import api from '../services/api';
+import Toast from './Toast';
 
-function NewRequestModal({ isOpen, onClose }) {
+function NewRequestModal({ isOpen, onClose, onRequestCreated }) {
   const [formData, setFormData] = useState({
     title: '',
     type: '',
@@ -11,6 +12,11 @@ function NewRequestModal({ isOpen, onClose }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ visible: true, message, type });
+  };
 
   if (!isOpen) return null;
 
@@ -25,7 +31,7 @@ function NewRequestModal({ isOpen, onClose }) {
 
     try {
       await api.post('/api/maintenance/requests', formData);
-      alert('Request submitted successfully!');
+      showToast('Request submitted successfully!', 'success');
       onClose();
       setFormData({
         title: '',
@@ -34,9 +40,12 @@ function NewRequestModal({ isOpen, onClose }) {
         location: '',
         description: '',
       });
-      window.location.reload(); // Refresh to see new request
+      if (onRequestCreated) onRequestCreated();
+      else window.location.reload();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to submit request');
+      const errorMsg = err.response?.data?.message || 'Failed to submit request';
+      setError(errorMsg);
+      showToast(errorMsg, 'error');
     } finally {
       setLoading(false);
     }

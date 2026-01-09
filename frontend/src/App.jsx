@@ -13,6 +13,8 @@ import AdminFacilitiesPage from './pages/AdminFacilitiesPage';
 import ManagerDashboard from './pages/ManagerDashboard';
 import ManagerMaintenancePage from './pages/ManagerMaintenancePage';
 import ManagerBookingsPage from './pages/ManagerBookingsPage';
+import TechnicianMaintenancePage from './pages/TechnicianMaintenancePage';
+import TechnicianAssignmentsPage from './pages/TechnicianAssignmentsPage';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -43,9 +45,12 @@ function AnimatedRoutes() {
               <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/admin/facilities" element={<AdminFacilitiesPage />} />
               <Route path="/admin/maintenance" element={<ManagerMaintenancePage />} />
+              <Route path="/admin/technician-assignments" element={<TechnicianAssignmentsPage />} />
               <Route path="/manager/dashboard" element={<ManagerDashboard />} />
               <Route path="/manager/maintenance" element={<ManagerMaintenancePage />} />
               <Route path="/manager/bookings" element={<ManagerBookingsPage />} />
+              <Route path="/manager/technician-assignments" element={<TechnicianAssignmentsPage />} />
+              <Route path="/technician/maintenance" element={<TechnicianMaintenancePage />} />
             </Route>
           </Route>
 
