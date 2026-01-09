@@ -42,6 +42,7 @@ function AnimatedRoutes() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/admin/facilities" element={<AdminFacilitiesPage />} />
+              <Route path="/admin/maintenance" element={<ManagerMaintenancePage />} />
               <Route path="/manager/dashboard" element={<ManagerDashboard />} />
               <Route path="/manager/maintenance" element={<ManagerMaintenancePage />} />
               <Route path="/manager/bookings" element={<ManagerBookingsPage />} />

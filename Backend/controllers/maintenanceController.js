@@ -26,11 +26,8 @@ exports.createRequest = async (req, res) => {
 exports.getRequests = async (req, res) => {
   try {
     let query = {};
-    if (req.user.role === 'employee') {
-      query.submittedBy = req.user.id;
-    } else if (req.user.role === 'technician') {
-      query.assignedTo = req.user.id;
-    } // Managers/Admins see all
+    // Everyone only sees their own requests
+    query.submittedBy = req.user.id;
 
     const requests = await MaintenanceRequest.find(query)
       .populate('submittedBy', 'username firstName lastName')

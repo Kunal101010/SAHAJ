@@ -21,14 +21,6 @@ function MaintenanceRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const isAdmin = currentUser?.role === 'admin';
-  const isManager = currentUser?.role === 'manager';
-  const isTechnician = currentUser?.role === 'technician';
-  const isEmployee = currentUser?.role === 'employee';
-
-  const canCreate = isEmployee || isManager || isAdmin; // Only these can submit new
-  const showAllRequests = isAdmin || isManager; // Admin & Manager see everyone's
-
   useEffect(() => {
     if (!currentUser) {
       navigate('/login');
@@ -41,11 +33,7 @@ function MaintenanceRequestsPage() {
     setLoading(true);
     setError('');
     try {
-      let url = '/api/maintenance/requests';
-      if (showAllRequests) {
-        url = '/api/maintenance/requests/all'; // We'll create this backend route for admin/manager
-      }
-      const res = await api.get(url);
+      const res = await api.get('/api/maintenance/requests');
       setRequests(res.data.data || []);
     } catch (err) {
       setError('Failed to load requests');
@@ -58,9 +46,7 @@ function MaintenanceRequestsPage() {
   const filteredRequests = requests.filter((req) =>
     req.title?.toLowerCase().includes(search.toLowerCase()) ||
     req.description?.toLowerCase().includes(search.toLowerCase()) ||
-    req.location?.toLowerCase().includes(search.toLowerCase()) ||
-    (req.submittedBy?.firstName + ' ' + req.submittedBy?.lastName).toLowerCase().includes(search.toLowerCase()) ||
-    req.submittedBy?.username?.toLowerCase().includes(search.toLowerCase())
+    req.location?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -72,23 +58,19 @@ function MaintenanceRequestsPage() {
 
         <div className="p-8 max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-800">
-              {showAllRequests ? 'All Maintenance Requests' : 'My Requests'}
-            </h2>
-            {canCreate && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition shadow-md"
-              >
-                Submit New Request
-              </button>
-            )}
+            <h2 className="text-3xl font-bold text-gray-800">Maintenance Requests</h2>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition shadow-md"
+            >
+              Submit New Request
+            </button>
           </div>
 
           <div className="mb-8">
             <input
               type="text"
-              placeholder="Search by title, description, location, or user..."
+              placeholder="Search by title, description, or location..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
@@ -108,7 +90,10 @@ function MaintenanceRequestsPage() {
           ) : filteredRequests.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-2xl shadow-lg">
               <p className="text-gray-500 text-xl">
-                {search ? 'No matching requests found.' : 'No requests found.'}
+                {search ? 'No matching requests found.' : 'You have no requests yet.'}
+              </p>
+              <p className="text-gray-400 mt-4">
+                Click "Submit New Request" to get started!
               </p>
             </div>
           ) : (
@@ -120,18 +105,17 @@ function MaintenanceRequestsPage() {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <div className="flex items-center gap-4 mb-3">
-                        <h3 className="text-2xl font-bold text-gray-800">{req.title}</h3>
-                        {showAllRequests && (
-                          <span className="text-sm text-gray-600">
-                            <strong>{req.submittedBy?.firstName} {req.submittedBy?.lastName}</strong> 
-                          </span>
-                        )}
-                      </div>
+                      <h3 className="text-2xl font-bold text-gray-800">{req.title}</h3>
                       <p className="text-gray-600 mt-3 text-lg">{req.description}</p>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 text-sm">
-                        <div><strong className="text-gray-700">Location:</strong> <span className="ml-2 text-gray-600">{req.location}</span></div>
-                        <div><strong className="text-gray-700">Type:</strong> <span className="ml-2 text-gray-600">{req.type}</span></div>
+                        <div>
+                          <strong className="text-gray-700">Location:</strong>
+                          <span className="ml-2 text-gray-600">{req.location}</span>
+                        </div>
+                        <div>
+                          <strong className="text-gray-700">Type:</strong>
+                          <span className="ml-2 text-gray-600">{req.type}</span>
+                        </div>
                         <div>
                           <strong className="text-gray-700">Priority:</strong>
                           <span className={`ml-2 px-3 py-1 rounded-full text-xs font-bold ${
@@ -143,7 +127,12 @@ function MaintenanceRequestsPage() {
                             {req.priority}
                           </span>
                         </div>
-                        <div><strong className="text-gray-700">Submitted:</strong> <span className="ml-2 text-gray-600">{new Date(req.createdAt).toLocaleDateString()}</span></div>
+                        <div>
+                          <strong className="text-gray-700">Submitted:</strong>
+                          <span className="ml-2 text-gray-600">
+                            {new Date(req.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
                       </div>
                     </div>
 

@@ -22,12 +22,13 @@ function Sidebar() {
   const adminItems = [
     { name: 'User Management', path: '/admin/users' },
     { name: 'Facility Management', path: '/admin/facilities' },
+    { name: 'Requests Management', path: '/admin/maintenance' },
   ];
 
   // Manager-only items
   const managerItems = [
     { name: 'Manager Dashboard', path: '/manager/dashboard' },
-    { name: 'Maintenance Overview', path: '/manager/maintenance' },
+    { name: 'Requests Management', path: '/manager/maintenance' },
     { name: 'Bookings Overview', path: '/manager/bookings' },
   ];
 
