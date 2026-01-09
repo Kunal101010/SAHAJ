@@ -6,6 +6,7 @@ function Sidebar() {
   const user = getCurrentUser();
 
   const isAdmin = user?.role === 'admin';
+  const isManager = user?.role === 'manager';
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', roles: ['employee', 'technician', 'manager', 'admin'] },
@@ -21,6 +22,13 @@ function Sidebar() {
   const adminItems = [
     { name: 'User Management', path: '/admin/users' },
     { name: 'Facility Management', path: '/admin/facilities' },
+  ];
+
+  // Manager-only items
+  const managerItems = [
+    { name: 'Manager Dashboard', path: '/manager/dashboard' },
+    { name: 'Maintenance Overview', path: '/manager/maintenance' },
+    { name: 'Bookings Overview', path: '/manager/bookings' },
   ];
 
   const filteredMenu = menuItems.filter(item => 
@@ -58,6 +66,24 @@ function Sidebar() {
                 key={item.name}
                 to={item.path}
                 className="block py-3 px-4 mb-1 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition font-medium"
+              >
+                {item.name}
+              </Link>
+            ))}
+          </>
+        )}
+
+        {/* Manager Section */}
+        {isManager && (
+          <>
+            <div className="my-6 border-t border-gray-300 pt-6">
+              
+            </div>
+            {managerItems.map((item) => (
+              <Link
+                key={item.name}
+                to={item.path}
+                className="block py-3 px-4 mb-1 text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-lg transition font-medium"
               >
                 {item.name}
               </Link>

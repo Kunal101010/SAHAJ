@@ -85,31 +85,19 @@ exports.updateRequest = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Request not found' });
     }
 
-    // Check access permissions
-    if (req.user.role === 'employee') {
-      // Employees can only edit their own requests and only if status is Pending
-      if (request.submittedBy.toString() !== req.user.id) {
-        return res.status(403).json({ success: false, message: 'Not authorized to edit this request' });
-      }
-      if (request.status !== 'Pending') {
-        return res.status(403).json({ success: false, message: 'Cannot edit request that is not pending' });
-      }
-      // Employees cannot change status
-      const { status, ...updateData } = req.body;
-      Object.assign(request, updateData);
-    } else if (req.user.role === 'technician') {
-      // Technicians can only edit assigned requests
-      if (request.assignedTo?.toString() !== req.user.id) {
-        return res.status(403).json({ success: false, message: 'Not assigned to this request' });
-      }
-      // Technicians can edit all fields including status
-      Object.assign(request, req.body);
-    } else if (['manager', 'admin'].includes(req.user.role)) {
-      // Managers and admins can edit any request
-      Object.assign(request, req.body);
-    } else {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
+    // Only the user who submitted the request can update it
+    if (request.submittedBy.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Only the request submitter can update this request' });
     }
+
+    // If status is no longer Pending, no updates allowed
+    if (request.status !== 'Pending') {
+      return res.status(403).json({ success: false, message: 'Cannot edit request that is not pending' });
+    }
+
+    // Cannot change status field
+    const { status, ...updateData } = req.body;
+    Object.assign(request, updateData);
 
     await request.save();
 

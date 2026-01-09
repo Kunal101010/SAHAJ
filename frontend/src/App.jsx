@@ -10,6 +10,9 @@ import FacilityBookingPage from './pages/FacilityBookingPage';
 import SettingsPage from './pages/SettingsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AdminFacilitiesPage from './pages/AdminFacilitiesPage';
+import ManagerDashboard from './pages/ManagerDashboard';
+import ManagerMaintenancePage from './pages/ManagerMaintenancePage';
+import ManagerBookingsPage from './pages/ManagerBookingsPage';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -39,6 +42,9 @@ function AnimatedRoutes() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/admin/facilities" element={<AdminFacilitiesPage />} />
+              <Route path="/manager/dashboard" element={<ManagerDashboard />} />
+              <Route path="/manager/maintenance" element={<ManagerMaintenancePage />} />
+              <Route path="/manager/bookings" element={<ManagerBookingsPage />} />
             </Route>
           </Route>
 
