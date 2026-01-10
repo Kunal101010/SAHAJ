@@ -1,6 +1,8 @@
 const User = require('../model/user');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
+const crypto = require('crypto');
+const sendEmail = require('../services/sendEmail');
 
 const generateToken = (userId, role) => {
   if (!process.env.JWT_SECRET) {
@@ -187,5 +189,91 @@ exports.changePassword = async (req, res) => {
   } catch (err) {
     console.error('ChangePassword error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ success: false, message: 'Email is required' });
+  }
+
+  try {
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User with this email does not exist' });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
+
+    user.passwordResetToken = resetTokenHash;
+    user.resetTokenExpiry = tokenExpiry;
+    await user.save();
+
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+    await sendEmail({
+      email: user.email,
+      subject: 'Password Reset Request - Sahaj FMS',
+      message: `
+        Hello ${user.firstName || user.username},
+        
+        You have requested to reset your password. Click the link below to reset your password:
+        ${resetLink}
+        
+        This link will expire in 1 hour.
+        
+        If you did not request this, please ignore this email.
+        
+        Best regards,
+        Sahaj FMS Team
+      `
+    });
+
+    res.json({
+      success: true,
+      message: 'Password reset link sent to your email'
+    });
+  } catch (err) {
+    console.error('ForgotPassword error:', err);
+    res.status(500).json({ success: false, message: 'Error sending reset email. Please try again.' });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  const { resetToken, newPassword } = req.body;
+
+  if (!resetToken || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Reset token and new password are required' });
+  }
+
+  try {
+    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    const user = await User.findOne({
+      passwordResetToken: resetTokenHash,
+      resetTokenExpiry: { $gt: new Date() }
+    }).select('+password');
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
+    }
+
+    user.password = newPassword;
+    user.passwordResetToken = undefined;
+    user.resetTokenExpiry = undefined;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully. You can now login with your new password.'
+    });
+  } catch (err) {
+    console.error('ResetPassword error:', err);
+    res.status(500).json({ success: false, message: 'Error resetting password. Please try again.' });
   }
 };

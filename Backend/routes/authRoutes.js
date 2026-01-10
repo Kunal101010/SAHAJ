@@ -1,7 +1,7 @@
 // routes/authRoutes.js
 
 const express = require('express');
-const { signup, login, getMe, logout, updateProfile, changePassword } = require('../controllers/authController');
+const { signup, login, getMe, logout, updateProfile, changePassword, forgotPassword, resetPassword } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const { body } = require('express-validator');
 
@@ -50,6 +50,7 @@ router.get('/me', protect, getMe);
 router.post('/logout', protect, logout);
 router.patch('/profile', protect, updateProfile);
 router.patch('/change-password', protect, changePasswordValidation, changePassword);
-
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 module.exports = router;

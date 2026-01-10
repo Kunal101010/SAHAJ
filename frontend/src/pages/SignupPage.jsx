@@ -79,6 +79,10 @@ function SignupPage() {
           <Link to="/login" className="text-purple-600 font-medium hover:underline">
             Login
           </Link>
+          {' | '}
+          <Link to="/forgot-password" className="text-purple-600 font-medium hover:underline">
+            Forgot Password?
+          </Link>
         </p>
       </div>
     </div>

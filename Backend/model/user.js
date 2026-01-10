@@ -54,6 +54,14 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  passwordResetToken: {
+    type: String,
+    select: false
+  },
+  resetTokenExpiry: {
+    type: Date,
+    select: false
   }
 }, {
   timestamps: true // Automatically add createdAt and updatedAt fields

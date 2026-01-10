@@ -8,6 +8,7 @@ const maintenanceRoutes = require('./routes/maintenanceRoutes');
 const adminRoutes = require('./routes/adminRoutes')
 const facilityRoutes = require('./routes/facilityRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 
 
@@ -39,6 +40,7 @@ app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 const port = process.env.PORT
 //listen server

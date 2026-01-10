@@ -1,6 +1,7 @@
-import { BellIcon, UserIcon } from '@heroicons/react/24/outline';
+import { UserIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../utils/auth';
+import NotificationBell from './NotificationBell';
 
 function TopBar({ user }) {
   const navigate = useNavigate();
@@ -13,9 +14,7 @@ function TopBar({ user }) {
     <div className="bg-white h-16 fixed top-0 right-0 left-64 z-10 flex items-center justify-end px-8 shadow-sm">
       <div className="flex items-center space-x-6">
         {/* Notification Bell */}
-        <button className="text-gray-600 hover:text-gray-900 transition">
-          <BellIcon className="h-6 w-6" />
-        </button>
+        <NotificationBell />
 
         {/* User Section - Clickable to Settings */}
         <button

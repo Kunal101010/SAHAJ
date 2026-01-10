@@ -2,6 +2,8 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { AnimatePresence, motion } from 'framer-motion';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import Layout from './components/Layout';
 import PrivateRoute from './components/PrivateRoute';
@@ -15,6 +17,7 @@ import ManagerMaintenancePage from './pages/ManagerMaintenancePage';
 import ManagerBookingsPage from './pages/ManagerBookingsPage';
 import TechnicianMaintenancePage from './pages/TechnicianMaintenancePage';
 import TechnicianAssignmentsPage from './pages/TechnicianAssignmentsPage';
+import NotificationsPage from './pages/NotificationsPage';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -33,6 +36,8 @@ function AnimatedRoutes() {
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
           {/* Protected routes with layout */}
           <Route element={<PrivateRoute />}>
@@ -41,6 +46,7 @@ function AnimatedRoutes() {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/maintenance-requests" element={<MaintenanceRequestsPage />} />
               <Route path="/facility-booking" element={<FacilityBookingPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/admin/facilities" element={<AdminFacilitiesPage />} />

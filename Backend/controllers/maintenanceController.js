@@ -1,5 +1,7 @@
 const MaintenanceRequest = require('../model/maintenanceRequest');
+const User = require('../model/user');
 const { validationResult } = require('express-validator');
+const notificationService = require('../services/notificationService');
 
 const handleError = (res, err, message = 'Server error') => {
   console.error('Error:', err);
@@ -24,6 +26,21 @@ exports.createRequest = async (req, res) => {
       submittedBy: req.user.id
     });
     await request.save();
+
+    // Notify all admins and managers about new request
+    const adminAndManagerIds = await notificationService.getUsersByRole(['admin', 'manager']);
+    const submittedUser = await User.findById(req.user.id).select('firstName lastName');
+    
+    if (adminAndManagerIds.length > 0) {
+      const notificationData = notificationService.requestCreatedNotification(
+        request._id,
+        request.title,
+        submittedUser.firstName || submittedUser.username || 'User'
+      );
+      
+      await notificationService.notifyMultiple(adminAndManagerIds, notificationData);
+    }
+
     res.status(201).json({ success: true, data: request });
   } catch (err) {
     handleError(res, err);
@@ -117,7 +134,8 @@ exports.updateRequest = async (req, res) => {
 
 exports.updateStatus = async (req, res) => {
   try {
-    const request = await MaintenanceRequest.findById(req.params.id);
+    const request = await MaintenanceRequest.findById(req.params.id)
+      .populate('submittedBy', 'firstName lastName username');
 
     if (!request) {
       return res.status(404).json({ success: false, message: 'Request not found' });
@@ -131,8 +149,34 @@ exports.updateStatus = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not assigned to you' });
     }
 
+    const oldStatus = request.status;
     request.status = req.body.status;
     await request.save();
+
+    // Send notifications when status changes to "Completed"
+    if (req.body.status === 'Completed') {
+      const adminAndManagerIds = await notificationService.getUsersByRole(['admin', 'manager']);
+      const completionNotification = notificationService.requestCompletedNotification(
+        request._id,
+        request.title
+      );
+
+      // Notify user
+      await notificationService.notify(request.submittedBy._id, completionNotification);
+
+      // Notify admin and managers
+      if (adminAndManagerIds.length > 0) {
+        await notificationService.notifyMultiple(adminAndManagerIds, completionNotification);
+      }
+    } else if (oldStatus !== req.body.status) {
+      // Notify user about status change
+      const statusChangeNotification = notificationService.requestStatusChangedNotification(
+        request._id,
+        request.title,
+        req.body.status
+      );
+      await notificationService.notify(request.submittedBy._id, statusChangeNotification);
+    }
 
     res.json({ success: true, data: request });
   } catch (err) {
@@ -148,7 +192,8 @@ exports.assignTechnician = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Technician ID is required' });
     }
 
-    const request = await MaintenanceRequest.findById(req.params.id);
+    const request = await MaintenanceRequest.findById(req.params.id)
+      .populate('submittedBy', 'firstName lastName username');
 
     if (!request) {
       return res.status(404).json({ success: false, message: 'Request not found' });
@@ -164,6 +209,25 @@ exports.assignTechnician = async (req, res) => {
     request.assignedTo = technicianId;
     request.status = 'In Progress';
     await request.save();
+
+    // Get technician details for notification
+    const technician = await User.findById(technicianId).select('firstName lastName username');
+
+    // Notify technician about assignment
+    const techNotificationData = notificationService.requestAssignedToTechnicianNotification(
+      request._id,
+      request.title,
+      technician.firstName || technician.username
+    );
+    await notificationService.notify(technicianId, techNotificationData);
+
+    // Notify user about technician assignment
+    const userNotificationData = notificationService.requestAssignedNotificationToUser(
+      request._id,
+      request.title,
+      technician.firstName || technician.username
+    );
+    await notificationService.notify(request.submittedBy, userNotificationData);
 
     const populatedRequest = await populateRequest(
       MaintenanceRequest.findById(request._id)

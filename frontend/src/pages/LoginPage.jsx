@@ -76,6 +76,9 @@ function LoginPage() {
               required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <Link to="/forgot-password" className="text-xs text-blue-600 hover:underline mt-2 inline-block">
+              Forgot password?
+            </Link>
           </div>
 
           <button

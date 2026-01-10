@@ -1,5 +1,7 @@
 const Booking = require('../model/booking');
 const Facility = require('../model/facility');
+const User = require('../model/user');
+const notificationService = require('../services/notificationService');
 
 // Create a booking — checks for overlapping bookings
 exports.createBooking = async (req, res) => {
@@ -47,6 +49,23 @@ exports.createBooking = async (req, res) => {
     });
 
     await booking.save();
+
+    // Notify managers and admins about new booking
+    const managerAndAdminIds = await notificationService.getUsersByRole(['admin', 'manager']);
+    const dateFormatted = startDate.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+
+    if (managerAndAdminIds.length > 0) {
+      const bookingNotification = notificationService.bookingCreatedNotification(
+        booking._id,
+        facility.name,
+        dateFormatted
+      );
+      await notificationService.notifyMultiple(managerAndAdminIds, bookingNotification);
+    }
 
     res.status(201).json({ success: true, booking });
   } catch (err) {
