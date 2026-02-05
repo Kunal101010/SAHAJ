@@ -152,158 +152,151 @@ function FacilityBookingPage() {
   }, []);
 
   return (
-    <div className="flex relative">
-      <Sidebar />
+    <div className="bg-gray-50 min-h-screen">
+      <div className="p-8 max-w-7xl mx-auto">
+        <h2 className="text-3xl font-bold text-gray-800 mb-8">Facility Booking</h2>
 
-      <div className="ml-64 flex-1 pt-16 bg-gray-50 min-h-screen">
-        <TopBar user={user} />
-
-        <div className="p-8 max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-gray-800 mb-8">Facility Booking</h2>
-
-          {/* Calendar + Facilities Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {/* Calendar */}
-            <div className="bg-white p-6 rounded-2xl shadow-lg">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">{monthTitle}</h3>
-                <div className="flex space-x-2">
-                  <button onClick={goPrev} className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">&lt;</button>
-                  <button onClick={goNext} className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">&gt;</button>
-                </div>
+        {/* Calendar + Facilities Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Calendar */}
+          <div className="bg-white p-6 rounded-2xl shadow-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold">{monthTitle}</h3>
+              <div className="flex space-x-2">
+                <button onClick={goPrev} className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">&lt;</button>
+                <button onClick={goNext} className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">&gt;</button>
               </div>
-              <div className="grid grid-cols-7 text-center text-sm font-medium text-gray-600 mb-2">
-                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-              </div>
-              <div className="grid grid-cols-7 text-center">
-                {days.map((day, index) => {
-                  const isToday = (() => {
-                    if (!day) return false;
-                    const d = new Date();
-                    return d.getDate() === day && d.getMonth() === currentMonth.getMonth() && d.getFullYear() === currentMonth.getFullYear();
-                  })();
-
-                  const selectedMatch = (() => {
-                    if (!selectedDate) return false;
-                    return selectedDate.getDate() === day && selectedDate.getMonth() === currentMonth.getMonth() && selectedDate.getFullYear() === currentMonth.getFullYear();
-                  })();
-
-                  return (
-                    <div
-                      key={index}
-                      className={`p-3 m-1 rounded-lg cursor-pointer transition ${day === null ? '' : 'hover:bg-blue-100'} ${isToday ? 'bg-blue-600 text-white font-bold' : ''} ${selectedMatch ? 'ring-4 ring-blue-400 bg-blue-200' : ''}`}
-                      onClick={() => day && setSelectedDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day))}
-                    >
-                      {day || ''}
-                    </div>
-                  );
-                })}
-              </div>
-              {selectedDate && (
-                <p className="text-center mt-4 text-blue-600 font-medium">
-                  Selected: {selectedDate.toLocaleDateString()}
-                </p>
-              )}
             </div>
+            <div className="grid grid-cols-7 text-center text-sm font-medium text-gray-600 mb-2">
+              <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+            </div>
+            <div className="grid grid-cols-7 text-center">
+              {days.map((day, index) => {
+                const isToday = (() => {
+                  if (!day) return false;
+                  const d = new Date();
+                  return d.getDate() === day && d.getMonth() === currentMonth.getMonth() && d.getFullYear() === currentMonth.getFullYear();
+                })();
 
-            {/* Available Facilities */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold mb-4">Available Facilities</h3>
+                const selectedMatch = (() => {
+                  if (!selectedDate) return false;
+                  return selectedDate.getDate() === day && selectedDate.getMonth() === currentMonth.getMonth() && selectedDate.getFullYear() === currentMonth.getFullYear();
+                })();
 
-              {loading && (
-                <div className="text-center py-8 text-gray-500">Loading facilities...</div>
-              )}
+                return (
+                  <div
+                    key={index}
+                    className={`p-3 m-1 rounded-lg cursor-pointer transition ${day === null ? '' : 'hover:bg-blue-100'} ${isToday ? 'bg-blue-600 text-white font-bold' : ''} ${selectedMatch ? 'ring-4 ring-blue-400 bg-blue-200' : ''}`}
+                    onClick={() => day && setSelectedDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day))}
+                  >
+                    {day || ''}
+                  </div>
+                );
+              })}
+            </div>
+            {selectedDate && (
+              <p className="text-center mt-4 text-blue-600 font-medium">
+                Selected: {selectedDate.toLocaleDateString()}
+              </p>
+            )}
+          </div>
 
-              {error && (
-                <div className="text-center py-8 text-red-500">
-                  Error: {error}
+          {/* Available Facilities */}
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold mb-4">Available Facilities</h3>
+
+            {loading && (
+              <div className="text-center py-8 text-gray-500">Loading facilities...</div>
+            )}
+
+            {error && (
+              <div className="text-center py-8 text-red-500">
+                Error: {error}
+              </div>
+            )}
+
+            {!loading && !error && facilities.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                No facilities available at the moment.
+              </div>
+            )}
+
+            {!loading && !error && facilities.map((facility) => (
+              <div
+                key={facility._id || facility.id}
+                className="bg-white p-6 rounded-2xl shadow hover:shadow-xl transition"
+              >
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-800">{facility.name}</h4>
+                    <p className="text-sm text-gray-600">Capacity: {facility.capacity} people</p>
+                    {facility.bookingsToday !== undefined && (
+                      <p className="text-sm text-gray-500 mt-1">{facility.bookingsToday} bookings on selected date</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => openModal(facility)}
+                    disabled={!selectedDate}
+                    className={`px-6 py-3 rounded-lg font-medium transition ${selectedDate
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                  >
+                    Book Now
+                  </button>
                 </div>
-              )}
+              </div>
+            ))}
+          </div>
+        </div>
 
-              {!loading && !error && facilities.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  No facilities available at the moment.
-                </div>
-              )}
+        {/* Bookings on selected date (aggregated) */}
+        <div className="bg-white p-8 rounded-2xl shadow-lg mt-8 mb-12">
+          <h3 className="text-2xl font-bold text-gray-800 mb-6">Bookings on {selectedDate?.toLocaleDateString()}</h3>
+          <BookingsList selectedDate={selectedDate} />
+        </div>
 
-              {!loading && !error && facilities.map((facility) => (
-                <div
-                  key={facility._id || facility.id}
-                  className="bg-white p-6 rounded-2xl shadow hover:shadow-xl transition"
-                >
-                  <div className="flex justify-between items-center">
+        {/* Upcoming Bookings */}
+        <div className="bg-white p-8 rounded-2xl shadow-lg">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-bold text-gray-800">My Upcoming Bookings</h3>
+            <button onClick={() => setSelectedDate(new Date())} className="text-sm text-blue-600 hover:text-blue-800 font-medium transition">Today</button>
+          </div>
+
+          {myBookings.length === 0 ? (
+            <div className="text-center text-gray-500 py-12">No upcoming bookings. Book a facility to see it here!</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {myBookings.map(b => (
+                <div key={b._id} className="bg-white rounded-xl shadow-md hover:shadow-2xl hover:scale-105 transition-all duration-300 overflow-hidden border border-gray-100">
+
+                  <div className="p-6 flex flex-col justify-between h-full">
                     <div>
-                      <h4 className="text-lg font-semibold text-gray-800">{facility.name}</h4>
-                      <p className="text-sm text-gray-600">Capacity: {facility.capacity} people</p>
-                      {facility.bookingsToday !== undefined && (
-                        <p className="text-sm text-gray-500 mt-1">{facility.bookingsToday} bookings on selected date</p>
-                      )}
+                      <div className="text-lg font-bold text-gray-800 mb-2">{b.facility?.name || 'Facility'}</div>
+                      <div className="text-xs font-medium text-gray-500 mb-3">
+                        {new Date(b.start).toLocaleDateString()}
+                      </div>
+                      <div className="text-sm font-medium text-gray-700 mb-3">
+                        <svg className="inline w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00-.293.707l-2.828 2.829a1 1 0 101.415 1.415L9 10.414V6z" /></svg>
+                        {new Date(b.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {new Date(b.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <p className="text-sm text-gray-600 mt-2 min-h-12">{b.purpose || 'No description'}</p>
                     </div>
                     <button
-                      onClick={() => openModal(facility)}
-                      disabled={!selectedDate}
-                      className={`px-6 py-3 rounded-lg font-medium transition ${
-                        selectedDate
-                          ? 'bg-blue-600 text-white hover:bg-blue-700'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      }`}
+                      onClick={() => {
+                        setSelectedFacility(b.facility);
+                        setIsModalOpen(true);
+                        setSelectedDate(new Date(b.start));
+                      }}
+                      className="mt-4 w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium transition-all duration-200 shadow-md hover:shadow-lg"
                     >
-                      Book Now
+                      Book Similar
                     </button>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Bookings on selected date (aggregated) */}
-          <div className="bg-white p-8 rounded-2xl shadow-lg mt-8 mb-12">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6">Bookings on {selectedDate?.toLocaleDateString()}</h3>
-            <BookingsList selectedDate={selectedDate} />
-          </div>
-
-          {/* Upcoming Bookings */}
-          <div className="bg-white p-8 rounded-2xl shadow-lg">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-gray-800">My Upcoming Bookings</h3>
-              <button onClick={() => setSelectedDate(new Date())} className="text-sm text-blue-600 hover:text-blue-800 font-medium transition">Today</button>
-            </div>
-
-            {myBookings.length === 0 ? (
-              <div className="text-center text-gray-500 py-12">No upcoming bookings. Book a facility to see it here!</div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {myBookings.map(b => (
-                  <div key={b._id} className="bg-white rounded-xl shadow-md hover:shadow-2xl hover:scale-105 transition-all duration-300 overflow-hidden border border-gray-100">
-                    
-                    <div className="p-6 flex flex-col justify-between h-full">
-                      <div>
-                        <div className="text-lg font-bold text-gray-800 mb-2">{b.facility?.name || 'Facility'}</div>
-                        <div className="text-xs font-medium text-gray-500 mb-3">
-                          {new Date(b.start).toLocaleDateString()}
-                        </div>
-                        <div className="text-sm font-medium text-gray-700 mb-3">
-                          <svg className="inline w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00-.293.707l-2.828 2.829a1 1 0 101.415 1.415L9 10.414V6z"/></svg>
-                          {new Date(b.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {new Date(b.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                        <p className="text-sm text-gray-600 mt-2 min-h-12">{b.purpose || 'No description'}</p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setSelectedFacility(b.facility);
-                          setIsModalOpen(true);
-                          setSelectedDate(new Date(b.start));
-                        }}
-                        className="mt-4 w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium transition-all duration-200 shadow-md hover:shadow-lg"
-                      >
-                        Book Similar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
@@ -361,7 +354,7 @@ function BookingsList({ selectedDate }) {
           <div className="p-4">
             <div className="font-bold text-gray-800 mb-2">{b.facility?.name || 'Facility'}</div>
             <div className="flex items-center text-sm text-gray-600 mb-2">
-              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00-.293.707l-2.828 2.829a1 1 0 101.415 1.415L9 10.414V6z"/></svg>
+              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00-.293.707l-2.828 2.829a1 1 0 101.415 1.415L9 10.414V6z" /></svg>
               {new Date(b.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {new Date(b.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
             <div className="text-xs text-gray-500 mb-2">By: {b.user?.username || b.user?.email || 'User'}</div>

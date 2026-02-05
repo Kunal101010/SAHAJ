@@ -45,87 +45,80 @@ function AdminUsersPage() {
   );
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="ml-64 flex-1 pt-16 bg-gray-50 min-h-screen">
-        <TopBar user={user} />
-
-        <div className="p-8 max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-800">User Management</h2>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition shadow-md"
-            >
-              Add New User
-            </button>
-          </div>
-
-          <div className="mb-8">
-            <input
-              type="text"
-              placeholder="Search users by name, username, or email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-            />
-          </div>
-
-          {loading ? (
-            <p className="text-center py-12 text-gray-600">Loading users...</p>
-          ) : (
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Name</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Username</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Email</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Role</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((u) => (
-                    <tr key={u._id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                      <td className="px-6 py-4">
-                        <span className="font-medium">{u.firstName} {u.lastName}</span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600">{u.username}</td>
-                      <td className="px-6 py-4 text-gray-600">{u.email}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          u.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                          u.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-                          u.role === 'technician' ? 'bg-orange-100 text-orange-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          u.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {u.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => setEditingUser(u)}
-                          className="text-blue-600 hover:text-blue-800 font-medium mr-4"
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+    <div className="bg-gray-50 min-h-screen">
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-bold text-gray-800">User Management</h2>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition shadow-md"
+          >
+            Add New User
+          </button>
         </div>
+
+        <div className="mb-8">
+          <input
+            type="text"
+            placeholder="Search users by name, username, or email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+          />
+        </div>
+
+        {loading ? (
+          <p className="text-center py-12 text-gray-600">Loading users...</p>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Name</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Username</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Email</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Role</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((u) => (
+                  <tr key={u._id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                    <td className="px-6 py-4">
+                      <span className="font-medium">{u.firstName} {u.lastName}</span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">{u.username}</td>
+                    <td className="px-6 py-4 text-gray-600">{u.email}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${u.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                          u.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                            u.role === 'technician' ? 'bg-orange-100 text-orange-800' :
+                              'bg-green-100 text-green-800'
+                        }`}>
+                        {u.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${u.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                        {u.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => setEditingUser(u)}
+                        className="text-blue-600 hover:text-blue-800 font-medium mr-4"
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <AddUserModal

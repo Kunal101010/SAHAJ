@@ -15,29 +15,37 @@ const populateRequest = (query) => {
 };
 
 exports.createRequest = async (req, res) => {
+  // Validate input (e.g. title is required)
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ success: false, errors: errors.array() });
   }
 
   try {
+    // 1. Create a new request object with data from frontend
+    // We automatically set 'submittedBy' to the current logged-in user
     const request = new MaintenanceRequest({
       ...req.body,
       submittedBy: req.user.id
     });
+
+    // 2. Save to database
     await request.save();
 
-    // Notify all admins and managers about new request
+    // 3. Send Notifications
+    // Find all store managers and admins to notify them
     const adminAndManagerIds = await notificationService.getUsersByRole(['admin', 'manager']);
     const submittedUser = await User.findById(req.user.id).select('firstName lastName');
-    
+
     if (adminAndManagerIds.length > 0) {
+      // Create notification message
       const notificationData = notificationService.requestCreatedNotification(
         request._id,
         request.title,
         submittedUser.firstName || submittedUser.username || 'User'
       );
-      
+
+      // Send notification (saved to DB and/or real-time)
       await notificationService.notifyMultiple(adminAndManagerIds, notificationData);
     }
 
@@ -82,14 +90,14 @@ exports.getRequestById = async (req, res) => {
     }
 
     if (req.user.role === 'employee') {
-      const submittedById = request.submittedBy._id 
-        ? request.submittedBy._id.toString() 
+      const submittedById = request.submittedBy._id
+        ? request.submittedBy._id.toString()
         : request.submittedBy.toString();
-        
+
       if (submittedById !== req.user.id) {
-        return res.status(403).json({ 
-          success: false, 
-          message: 'Not authorized - can only view your own requests' 
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized - can only view your own requests'
         });
       }
     }
@@ -109,16 +117,16 @@ exports.updateRequest = async (req, res) => {
     }
 
     if (request.submittedBy.toString() !== req.user.id) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Only the request submitter can update this request' 
+      return res.status(403).json({
+        success: false,
+        message: 'Only the request submitter can update this request'
       });
     }
 
     if (request.status !== 'Pending') {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Cannot edit request that is not pending' 
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot edit request that is not pending'
       });
     }
 
@@ -200,9 +208,9 @@ exports.assignTechnician = async (req, res) => {
     }
 
     if (!['manager', 'admin'].includes(req.user.role)) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Only managers and admins can assign technicians' 
+      return res.status(403).json({
+        success: false,
+        message: 'Only managers and admins can assign technicians'
       });
     }
 

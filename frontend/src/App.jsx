@@ -18,6 +18,7 @@ import ManagerBookingsPage from './pages/ManagerBookingsPage';
 import TechnicianMaintenancePage from './pages/TechnicianMaintenancePage';
 import TechnicianAssignmentsPage from './pages/TechnicianAssignmentsPage';
 import NotificationsPage from './pages/NotificationsPage';
+import ReportsAnalyticsPage from './pages/ReportsAnalyticsPage';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -47,6 +48,7 @@ function AnimatedRoutes() {
               <Route path="/maintenance-requests" element={<MaintenanceRequestsPage />} />
               <Route path="/facility-booking" element={<FacilityBookingPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/reports-analytics" element={<ReportsAnalyticsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/admin/facilities" element={<AdminFacilitiesPage />} />

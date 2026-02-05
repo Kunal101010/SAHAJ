@@ -67,20 +67,24 @@ const userSchema = new mongoose.Schema({
   timestamps: true // Automatically add createdAt and updatedAt fields
 });
 
-// Pre-save hook to hash password before saving
-userSchema.pre('save', async function() { 
-  if (!this.isModified('password')) return;  // Just return to skip
+// Pre-save hook: Runs automatically before saving a user to the database
+// We use this to hash the password so it's not stored as plain text
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;  // If password wasn't changed, skip hashing
 
   try {
+    // Generate a "salt" (random data to make hash unique)
     const salt = await bcrypt.genSalt(10);
+    // Hash the password with the salt
     this.password = await bcrypt.hash(this.password, salt);
   } catch (err) {
-    throw err;  
+    throw err;
   }
 });
 
-// Method to compare password for login
-userSchema.methods.comparePassword = async function(candidatePassword) {
+// Helper method to check if an entered password matches the hashed password in DB
+// Used during Login
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 

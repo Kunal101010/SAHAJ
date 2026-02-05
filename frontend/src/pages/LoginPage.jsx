@@ -12,28 +12,31 @@ function LoginPage() {
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+    e.preventDefault(); // Prevent page reload on form submit
+    setLoading(true);   // Show loading state (e.g., disable button)
+    setError('');       // Clear previous errors
 
     try {
+      // 1. Send login request to backend API
       const response = await api.post('/api/auth/login', {
         emailOrUsername,
         password,
       });
 
+      // 2. If successful, save token and redirect to Dashboard
       if (response.data.success) {
         loginUser(response.data.token, response.data.user);
-        navigate('/dashboard'); // We'll create this next
+        navigate('/dashboard');
       }
     } catch (err) {
+      // 3. Handle errors (like wrong password or server/network issues)
       setError(
         err.response?.data?.message ||
         err.response?.data?.errors?.[0]?.msg ||
         'Login failed. Please try again.'
       );
     } finally {
-      setLoading(false);
+      setLoading(false); // Stop loading state
     }
   };
 

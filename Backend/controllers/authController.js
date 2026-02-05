@@ -27,6 +27,7 @@ const formatUserResponse = (user) => ({
 });
 
 exports.signup = async (req, res) => {
+  // Check for input errors
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ success: false, errors: errors.array() });
@@ -35,6 +36,7 @@ exports.signup = async (req, res) => {
   const { username, email, phone, password, firstName, lastName, role } = req.body;
 
   try {
+    // 1. Check if user already exists
     const existingUser = await User.findOne({
       $or: [{ email }, { username }]
     });
@@ -46,20 +48,24 @@ exports.signup = async (req, res) => {
       });
     }
 
+    // 2. Create new user object
     const user = new User({
       username,
       email,
       phone,
-      password,
+      password, // Mongoose will hash this automatically (see User model)
       firstName,
       lastName,
-      role: role || 'employee'
+      role: role || 'employee' // Default role is employee
     });
 
+    // 3. Save user to database
     await user.save();
 
+    // 4. Generate login token immediately
     const token = generateToken(user._id, user.role);
 
+    // 5. Respond with success
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
@@ -73,6 +79,7 @@ exports.signup = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
+  // Check if there are any validation errors (like missing email/password)
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ success: false, errors: errors.array() });
@@ -81,25 +88,32 @@ exports.login = async (req, res) => {
   const { emailOrUsername, password } = req.body;
 
   try {
+    // 1. Find user by either email or username
+    // We explicitly select the password field because it's usually hidden
     const user = await User.findOne({
       $or: [{ email: emailOrUsername }, { username: emailOrUsername }]
     }).select('+password');
 
+    // 2. If no user found, return error
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
+    // 3. Check if account is active (not banned/deleted)
     if (!user.isActive) {
       return res.status(401).json({ success: false, message: 'Account is deactivated' });
     }
 
+    // 4. Compare the provided password with the hashed password in database
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
+    // 5. Generate a secure token (JWT) for the user to stay logged in
     const token = generateToken(user._id, user.role);
 
+    // 6. Send back success response with token and user info
     res.json({
       success: true,
       message: 'Login successful',
@@ -200,32 +214,39 @@ exports.forgotPassword = async (req, res) => {
   }
 
   try {
+    // 1. Find user by email
     const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User with this email does not exist' });
     }
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
-    const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
+    // 2. Generate a random 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
+    // 3. Hash the OTP for security before saving to DB
+    const resetTokenHash = crypto.createHash('sha256').update(otp).digest('hex');
+
+    // 4. Set expiry time (10 minutes from now)
+    const tokenExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    // 5. Save hashed OTP and expiry to user document
     user.passwordResetToken = resetTokenHash;
     user.resetTokenExpiry = tokenExpiry;
     await user.save();
 
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-
+    // 6. Send the Plain OTP via email (not the hashed one)
     await sendEmail({
       email: user.email,
-      subject: 'Password Reset Request - Sahaj FMS',
+      subject: 'Password Reset OTP - Sahaj FMS',
       message: `
         Hello ${user.firstName || user.username},
         
-        You have requested to reset your password. Click the link below to reset your password:
-        ${resetLink}
+        You have requested to reset your password. Use the following One-Time Password (OTP) to reset it:
         
-        This link will expire in 1 hour.
+        ${otp}
+        
+        This code will expire in 10 minutes.
         
         If you did not request this, please ignore this email.
         
@@ -236,33 +257,37 @@ exports.forgotPassword = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Password reset link sent to your email'
+      message: 'OTP sent to your email'
     });
   } catch (err) {
     console.error('ForgotPassword error:', err);
-    res.status(500).json({ success: false, message: 'Error sending reset email. Please try again.' });
+    res.status(500).json({ success: false, message: 'Error sending OTP. Please try again.' });
   }
 };
 
 exports.resetPassword = async (req, res) => {
-  const { resetToken, newPassword } = req.body;
+  const { email, otp, newPassword } = req.body;
 
-  if (!resetToken || !newPassword) {
-    return res.status(400).json({ success: false, message: 'Reset token and new password are required' });
+  if (!email || !otp || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Email, OTP, and new password are required' });
   }
 
   try {
-    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+    // 1. Hash the provided OTP to compare with stored hash
+    const resetTokenHash = crypto.createHash('sha256').update(otp).digest('hex');
 
+    // 2. Find user that matches Email AND Hashed OTP AND Token is not expired
     const user = await User.findOne({
+      email: email.toLowerCase(),
       passwordResetToken: resetTokenHash,
-      resetTokenExpiry: { $gt: new Date() }
+      resetTokenExpiry: { $gt: new Date() } // $gt means "Greater Than" (time in future)
     }).select('+password');
 
     if (!user) {
-      return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
     }
 
+    // 3. Update password and clear reset tokens
     user.password = newPassword;
     user.passwordResetToken = undefined;
     user.resetTokenExpiry = undefined;

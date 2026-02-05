@@ -95,65 +95,60 @@ function TechnicianAssignmentsPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-
-      <div className="ml-64 flex-1 flex flex-col overflow-hidden">
-        <TopBar user={currentUser} />
-
-        <div className="flex-1 overflow-auto">
-          <div className="p-6 lg:p-8 max-w-6xl mx-auto w-full">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900">Technician Assignments</h1>
-              <p className="text-gray-600 mt-1">Manage and track technician task assignments</p>
-            </div>
-
-            <div className="mb-6">
-              <input
-                type="text"
-                placeholder="Search by technician, request, or location..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
-              />
-            </div>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-                {error}
-              </div>
-            )}
-
-            {loading ? (
-              <div className="flex items-center justify-center py-24">
-                <p className="text-gray-600">Loading assignments...</p>
-              </div>
-            ) : Object.keys(groupedByTechnician).length === 0 ? (
-              <div className="flex items-center justify-center py-24 bg-white rounded-lg border border-gray-200">
-                <p className="text-gray-600">
-                  {search ? 'No matching assignments found' : 'No technician assignments yet'}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {Object.entries(groupedByTechnician).map(([technicianId, technician]) => (
-                  <TechnicianAccordion
-                    key={technicianId}
-                    technicianId={technicianId}
-                    technician={technician}
-                    isExpanded={expandedTechnicians[technicianId]}
-                    onToggle={toggleTechnician}
-                    onViewRequest={(requestId) => {
-                      setSelectedRequestId(requestId);
-                      setIsViewModalOpen(true);
-                    }}
-                  />
-                ))}
-              </div>
-            )}
+    <div className="flex h-screen bg-gray-50 flex-col">
+      <div className="flex-1 overflow-auto">
+        <div className="p-6 lg:p-8 max-w-6xl mx-auto w-full">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Technician Assignments</h1>
+            <p className="text-gray-600 mt-1">Manage and track technician task assignments</p>
           </div>
+
+          <div className="mb-6">
+            <input
+              type="text"
+              placeholder="Search by technician, request, or location..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+            />
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex items-center justify-center py-24">
+              <p className="text-gray-600">Loading assignments...</p>
+            </div>
+          ) : Object.keys(groupedByTechnician).length === 0 ? (
+            <div className="flex items-center justify-center py-24 bg-white rounded-lg border border-gray-200">
+              <p className="text-gray-600">
+                {search ? 'No matching assignments found' : 'No technician assignments yet'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {Object.entries(groupedByTechnician).map(([technicianId, technician]) => (
+                <TechnicianAccordion
+                  key={technicianId}
+                  technicianId={technicianId}
+                  technician={technician}
+                  isExpanded={expandedTechnicians[technicianId]}
+                  onToggle={toggleTechnician}
+                  onViewRequest={(requestId) => {
+                    setSelectedRequestId(requestId);
+                    setIsViewModalOpen(true);
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
 
       <ViewEditRequestModal
         isOpen={isViewModalOpen}
@@ -171,7 +166,7 @@ function TechnicianAssignmentsPage() {
         type={toast.type}
         onClose={() => setToast({ ...toast, isVisible: false })}
       />
-    </div>
+    </div >
   );
 
   function TechnicianAccordion({ technicianId, technician, isExpanded, onToggle, onViewRequest }) {
@@ -208,9 +203,8 @@ function TechnicianAssignmentsPage() {
 
             <div className="flex-shrink-0">
               <svg
-                className={`w-5 h-5 text-gray-700 transition-transform duration-300 ${
-                  isExpanded ? 'rotate-180' : ''
-                }`}
+                className={`w-5 h-5 text-gray-700 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''
+                  }`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -278,11 +272,10 @@ function TechnicianAssignmentsPage() {
 
   function RequestCard({ request, isCompleted, onView, getPriorityStyles }) {
     return (
-      <div className={`bg-white p-5 rounded-lg border transition ${
-        isCompleted
-          ? 'border-green-200 hover:border-green-400 opacity-75'
-          : 'border-blue-200 hover:border-blue-400'
-      }`}>
+      <div className={`bg-white p-5 rounded-lg border transition ${isCompleted
+        ? 'border-green-200 hover:border-green-400 opacity-75'
+        : 'border-blue-200 hover:border-blue-400'
+        }`}>
         <div className="flex justify-between items-start gap-4">
           <div className="flex-1">
             <h5 className="text-base font-semibold text-gray-900">{request.title}</h5>
@@ -314,11 +307,10 @@ function TechnicianAssignmentsPage() {
 
           <button
             onClick={() => onView(request._id)}
-            className={`px-3 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition ${
-              isCompleted
-                ? 'bg-gray-600 hover:bg-gray-700 text-white'
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }`}
+            className={`px-3 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition ${isCompleted
+              ? 'bg-gray-600 hover:bg-gray-700 text-white'
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
           >
             View Details
           </button>

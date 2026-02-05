@@ -44,13 +44,29 @@ const changePasswordValidation = [
 ];
 
 // Routes
+// Routes
+// POST /api/auth/signup - Register new user
 router.post('/signup', signupValidation, signup);
+
+// POST /api/auth/login - Login user
 router.post('/login', loginValidation, login);
+
+// GET /api/auth/me - Get current user info (Required Login)
 router.get('/me', protect, getMe);
+
+// POST /api/auth/logout - Logout user
 router.post('/logout', protect, logout);
+
+// PATCH /api/auth/profile - Update profile details
 router.patch('/profile', protect, updateProfile);
+
+// PATCH /api/auth/change-password - Change password
 router.patch('/change-password', protect, changePasswordValidation, changePassword);
+
+// POST /api/auth/forgot-password - Request OTP
 router.post('/forgot-password', forgotPassword);
+
+// POST /api/auth/reset-password - Verify OTP & Reset
 router.post('/reset-password', resetPassword);
 
 module.exports = router;

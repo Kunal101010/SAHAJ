@@ -65,74 +65,68 @@ function ManagerBookingsPage() {
   };
 
   return (
-    <div className="flex relative">
-      <Sidebar />
+    <div className="bg-gray-50 min-h-screen">
+      <div className="p-8 max-w-7xl mx-auto">
+        <h2 className="text-3xl font-bold text-gray-800 mb-8">Facility Bookings Overview</h2>
 
-      <div className="ml-64 flex-1 pt-16 bg-gray-50 min-h-screen">
-        <TopBar user={user} />
+        {/* Filter */}
+        <div className="bg-white p-6 rounded-2xl shadow-lg mb-8">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Facility</label>
+          <select
+            value={facilityFilter}
+            onChange={(e) => setFacilityFilter(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">All Facilities</option>
+            {facilities.map(f => (
+              <option key={f._id} value={f._id}>{f.name}</option>
+            ))}
+          </select>
+        </div>
 
-        <div className="p-8 max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-gray-800 mb-8">Facility Bookings Overview</h2>
-
-          {/* Filter */}
-          <div className="bg-white p-6 rounded-2xl shadow-lg mb-8">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Facility</label>
-            <select
-              value={facilityFilter}
-              onChange={(e) => setFacilityFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Facilities</option>
-              {facilities.map(f => (
-                <option key={f._id} value={f._id}>{f.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Bookings List */}
-          {loading ? (
-            <div className="text-center py-12 text-gray-500">Loading bookings...</div>
-          ) : (
-            <div className="space-y-4">
-              {filteredBookings.length === 0 ? (
-                <div className="bg-white p-12 rounded-2xl shadow-lg text-center text-gray-500">
-                  No bookings found.
-                </div>
-              ) : (
-                filteredBookings.map(booking => (
-                  <div key={booking._id} className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-                      <div>
-                        <p className="text-sm text-gray-600">Facility</p>
-                        <p className="font-bold text-gray-800">{booking.facility?.name || 'Unknown'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Booked By</p>
-                        <p className="font-medium text-gray-800">{booking.user?.username || booking.user?.email || 'Unknown'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Date & Time</p>
-                        <p className="font-medium text-gray-800">
-                          {new Date(booking.start).toLocaleDateString()} {new Date(booking.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(booking.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Status</p>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
-                          {booking.status}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Purpose</p>
-                        <p className="font-medium text-gray-800">{booking.purpose || 'N/A'}</p>
-                      </div>
+        {/* Bookings List */}
+        {loading ? (
+          <div className="text-center py-12 text-gray-500">Loading bookings...</div>
+        ) : (
+          <div className="space-y-4">
+            {filteredBookings.length === 0 ? (
+              <div className="bg-white p-12 rounded-2xl shadow-lg text-center text-gray-500">
+                No bookings found.
+              </div>
+            ) : (
+              filteredBookings.map(booking => (
+                <div key={booking._id} className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                    <div>
+                      <p className="text-sm text-gray-600">Facility</p>
+                      <p className="font-bold text-gray-800">{booking.facility?.name || 'Unknown'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Booked By</p>
+                      <p className="font-medium text-gray-800">{booking.user?.username || booking.user?.email || 'Unknown'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Date & Time</p>
+                      <p className="font-medium text-gray-800">
+                        {new Date(booking.start).toLocaleDateString()} {new Date(booking.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(booking.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Status</p>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
+                        {booking.status}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Purpose</p>
+                      <p className="font-medium text-gray-800">{booking.purpose || 'N/A'}</p>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -11,7 +11,7 @@ function TopBar({ user }) {
   };
 
   return (
-    <div className="bg-white h-16 fixed top-0 right-0 left-64 z-10 flex items-center justify-end px-8 shadow-sm">
+    <div className="bg-white h-16 fixed top-0 right-0 left-64 z-10 flex items-center justify-end px-8 shadow-sm print:hidden">
       <div className="flex items-center space-x-6">
         {/* Notification Bell */}
         <NotificationBell />

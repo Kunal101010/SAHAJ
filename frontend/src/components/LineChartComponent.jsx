@@ -1,27 +1,30 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 function LineChartComponent({ data = [] }) {
-  // Default data if none provided
-  const defaultData = [
-    { name: 'Jan', value: 40 },
-    { name: 'Feb', value: 30 },
-    { name: 'Mar', value: 50 },
-    { name: 'Apr', value: 45 },
-    { name: 'May', value: 60 },
-  ];
-
-  const chartData = data.length > 0 ? data : defaultData;
+  // Data key wrapper to handle different backend responses if needed, 
+  // but based on controller: _id is date string, count is value
+  const chartData = data.map(item => ({
+    name: item._id, // Date string (YYYY-MM)
+    value: item.count
+  }));
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">
-      <h3 className="text-lg font-semibold mb-4">Monthly Request Trend</h3>
-      <ResponsiveContainer width="100%" height={200}>
-        <LineChart data={chartData}>
+      <h3 className="text-lg font-semibold mb-4">Request Trends (Monthly)</h3>
+      <ResponsiveContainer width="100%" height={240}>
+        <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" />
-          <YAxis />
+          <YAxis allowDecimals={false} />
           <Tooltip />
-          <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} />
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke="#8884d8"
+            activeDot={{ r: 8 }}
+            strokeWidth={2}
+            name="Requests"
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>

@@ -34,12 +34,12 @@ function Sidebar() {
     { name: 'Technician Assignments', path: '/manager/technician-assignments' },
   ];
 
-  const filteredMenu = menuItems.filter(item => 
+  const filteredMenu = menuItems.filter(item =>
     item.roles.includes(user?.role || '')
   );
 
   return (
-    <div className="bg-gray-50 w-64 h-screen fixed top-0 left-0 flex flex-col border-r border-gray-200">
+    <div className="bg-gray-50 w-64 h-screen fixed top-0 left-0 flex flex-col border-r border-gray-200 print:hidden">
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <h1 className="text-2xl font-bold text-gray-800">SAHAJ/FMS</h1>
@@ -62,7 +62,7 @@ function Sidebar() {
         {isAdmin && (
           <>
             <div className="my-6 border-t border-gray-300 pt-6">
-              
+
             </div>
             {adminItems.map((item) => (
               <Link
@@ -80,7 +80,7 @@ function Sidebar() {
         {isManager && (
           <>
             <div className="my-6 border-t border-gray-300 pt-6">
-              
+
             </div>
             {managerItems.map((item) => (
               <Link

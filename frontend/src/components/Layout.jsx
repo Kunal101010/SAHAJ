@@ -9,9 +9,9 @@ function Layout() {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="flex-1 ml-64">
+      <div className="flex-1 ml-64 print:ml-0">
         <TopBar user={user} />
-        <main className="pt-16">
+        <main className="pt-16 print:pt-0">
           <Outlet /> {/* This renders the current page */}
         </main>
       </div>
