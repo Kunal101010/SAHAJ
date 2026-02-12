@@ -30,15 +30,11 @@ exports.createUser = async (req, res) => {
       });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
     user = new User({
       username,
       email,
       phone: phone || '0000000000',
-      password: hashedPassword,
+      password,
       firstName,
       lastName,
       role: role || 'employee'

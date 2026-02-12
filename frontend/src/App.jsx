@@ -12,7 +12,6 @@ import FacilityBookingPage from './pages/FacilityBookingPage';
 import SettingsPage from './pages/SettingsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AdminFacilitiesPage from './pages/AdminFacilitiesPage';
-import ManagerDashboard from './pages/ManagerDashboard';
 import ManagerMaintenancePage from './pages/ManagerMaintenancePage';
 import ManagerBookingsPage from './pages/ManagerBookingsPage';
 import TechnicianMaintenancePage from './pages/TechnicianMaintenancePage';
@@ -37,13 +36,14 @@ function AnimatedRoutes() {
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
           {/* Protected routes with layout */}
           <Route element={<PrivateRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<DashboardPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/maintenance-requests" element={<MaintenanceRequestsPage />} />
               <Route path="/facility-booking" element={<FacilityBookingPage />} />
@@ -54,7 +54,6 @@ function AnimatedRoutes() {
               <Route path="/admin/facilities" element={<AdminFacilitiesPage />} />
               <Route path="/admin/maintenance" element={<ManagerMaintenancePage />} />
               <Route path="/admin/technician-assignments" element={<TechnicianAssignmentsPage />} />
-              <Route path="/manager/dashboard" element={<ManagerDashboard />} />
               <Route path="/manager/maintenance" element={<ManagerMaintenancePage />} />
               <Route path="/manager/bookings" element={<ManagerBookingsPage />} />
               <Route path="/manager/technician-assignments" element={<TechnicianAssignmentsPage />} />

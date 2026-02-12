@@ -1,8 +1,10 @@
 const express = require("express")
 const app = express()
 const cors = require("cors");
+const http = require('http'); // Import HTTP module
+const { initSocket } = require('./socket'); // Import socket init function
 
-// Import Route Handlers (These files define what happens for specific URLs)
+// Import Route Handlers
 const authRoutes = require('./routes/authRoutes');
 const maintenanceRoutes = require('./routes/maintenanceRoutes');
 const adminRoutes = require('./routes/adminRoutes')
@@ -10,25 +12,23 @@ const facilityRoutes = require('./routes/facilityRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
-// Load environment variables (like passwords/secrets) from .env file
+// Load environment variables
 require("dotenv").config()
 
 // Connect to MongoDB Database
 const { connectDatabase } = require("./database/database")
 connectDatabase()
 
-// Middleware: Parse incoming JSON data
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Middleware: Enable CORS (Cross-Origin Resource Sharing)
-// Allows our Frontend (running on port 5173) to talk to this Backend
 app.use(cors({
     origin: 'http://localhost:5173',
     credentials: true
 }));
 
-// Test route to check if server is running
+// Test route
 app.get("/", (req, res) => {
     res.status(200).json({
         message: "I am alive"
@@ -36,7 +36,6 @@ app.get("/", (req, res) => {
 })
 
 // API Route Mapping
-// e.g., Request to /api/auth/login -> goes to authRoutes
 app.use('/api/auth', authRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/admin', adminRoutes);
@@ -44,8 +43,16 @@ app.use('/api/facilities', facilityRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-const port = process.env.PORT
-// Start the server listening on the defined port
-app.listen(port, () => {
+const port = process.env.PORT || 5000;
+
+// Create HTTP server wraps express app
+const server = http.createServer(app);
+
+// Initialize Socket.io
+initSocket(server);
+
+// Start the server
+server.listen(port, () => {
     console.log("Running on port " + port)
 })
+

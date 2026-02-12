@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../utils/auth';
 import api from '../services/api';
-import Sidebar from '../components/Sidebar';
-import TopBar from '../components/TopBar';
+// import Sidebar from '../components/Sidebar';
+// import TopBar from '../components/TopBar';
 import AddUserModal from '../components/AddUserModal';
 import EditUserModal from '../components/EditUserModal'
 

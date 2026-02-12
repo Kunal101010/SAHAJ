@@ -52,10 +52,10 @@ exports.createBooking = async (req, res) => {
 
     // Notify managers and admins about new booking
     const managerAndAdminIds = await notificationService.getUsersByRole(['admin', 'manager']);
-    const dateFormatted = startDate.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    const dateFormatted = startDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
 
     if (managerAndAdminIds.length > 0) {
@@ -152,9 +152,31 @@ exports.cancelBooking = async (req, res) => {
     booking.status = 'Cancelled';
     await booking.save();
 
+    // Emit Socket Event
+    try {
+      getSocketIO().emit('booking_cancelled', { bookingId: booking._id, facilityId: booking.facility });
+    } catch (e) {
+      console.error('Socket emit error:', e.message);
+    }
+
     res.json({ success: true, booking });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Get ALL bookings (Admin/Manager only)
+exports.getAllBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find()
+      .populate('user', 'username email firstName lastName')
+      .populate('facility', 'name')
+      .sort({ start: -1 }); // Newest first
+
+    res.json({ success: true, bookings });
+  } catch (err) {
+    console.error('getAllBookings error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

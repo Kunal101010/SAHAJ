@@ -23,12 +23,12 @@ function Sidebar() {
     { name: 'User Management', path: '/admin/users' },
     { name: 'Facility Management', path: '/admin/facilities' },
     { name: 'Requests Management', path: '/admin/maintenance' },
+    { name: 'Bookings Overview', path: '/manager/bookings' }, // Reusing manager page for now as it has same functionality
     { name: 'Technician Assignments', path: '/admin/technician-assignments' },
   ];
 
   // Manager-only items
   const managerItems = [
-    { name: 'Manager Dashboard', path: '/manager/dashboard' },
     { name: 'Requests Management', path: '/manager/maintenance' },
     { name: 'Bookings Overview', path: '/manager/bookings' },
     { name: 'Technician Assignments', path: '/manager/technician-assignments' },

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../utils/auth';
-import Sidebar from '../components/Sidebar';
-import TopBar from '../components/TopBar';
+// import Sidebar from '../components/Sidebar';
+// import TopBar from '../components/TopBar';
 import BookFacilityModal from '../components/BookFacilityModal';
 import Toast from '../components/Toast';
 import api from '../services/api'; // Import API service
@@ -19,6 +19,93 @@ function FacilityBookingPage() {
   const [loading, setLoading] = useState(true);            // Loading state
   const [error, setError] = useState(null);                // Error handling
   const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
+  const [formData, setFormData] = useState({
+    facilityId: '', // Will be set when a facility is selected or from initial load
+    date: '',
+    start: '',
+    end: '',
+    purpose: ''
+  });
+  const [success, setSuccess] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    // --- VALIDATION START ---
+
+    // 1. Date Validation (No Past Dates)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize to start of day
+    const selectedDate = new Date(formData.date);
+    // Fix timezone offset issue where selected date might be previous day in UTC
+    // Simple fix: compare date strings YYYY-MM-DD
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (formData.date < todayStr) {
+      setError('Cannot book for a past date. Please select today or a future date.');
+      setLoading(false);
+      return;
+    }
+
+    // 2. Time Validation (9 AM - 5 PM)
+    // formData.start/end are "HH:MM" strings
+    const startHour = parseInt(formData.start.split(':')[0]);
+    const endHour = parseInt(formData.end.split(':')[0]);
+    const endMin = parseInt(formData.end.split(':')[1]);
+
+    // Check Start Time (Must be >= 09:00)
+    if (startHour < 9) {
+      setError('Facility opens at 9:00 AM. Please choose a time after 9 AM.');
+      setLoading(false);
+      return;
+    }
+
+    // Check End Time (Must be <= 17:00)
+    // If hour is 17, minute must be 00. If hour > 17, invalid.
+    if (endHour > 17 || (endHour === 17 && endMin > 0)) {
+      setError('Facility closes at 5:00 PM. Please choose a time before 5 PM.');
+      setLoading(false);
+      return;
+    }
+
+    // Check Start < End
+    if (formData.start >= formData.end) {
+      setError('End time must be after start time.');
+      setLoading(false);
+      return;
+    }
+
+    // --- VALIDATION END ---
+
+    // Combine Date and Time for API
+    const startDateTime = new Date(`${formData.date}T${formData.start}`);
+    const endDateTime = new Date(`${formData.date}T${formData.end}`);
+
+    try {
+      await api.post('/api/bookings', {
+        facilityId: formData.facilityId,
+        start: startDateTime,
+        end: endDateTime,
+        purpose: formData.purpose
+      });
+      setSuccess('Booking successful!');
+      // Reset form
+      setFormData({
+        facilityId: facilities[0]?._id || '',
+        date: '',
+        start: '',
+        end: '',
+        purpose: ''
+      });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to book facility');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) {
@@ -238,8 +325,8 @@ function FacilityBookingPage() {
                     onClick={() => openModal(facility)}
                     disabled={!selectedDate}
                     className={`px-6 py-3 rounded-lg font-medium transition ${selectedDate
-                        ? 'bg-blue-600 text-white hover:bg-blue-700'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
                   >
                     Book Now

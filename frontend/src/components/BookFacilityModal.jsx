@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
+import AlertModal from './AlertModal';
 
 function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialStartTime, initialEndTime }) {
   const [facilities, setFacilities] = useState([]);
@@ -11,11 +12,22 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
     purpose: '',
   });
   const [loading, setLoading] = useState(false);
+  // Internal error state for form fields validation feedback if needed, 
+  // but user requested "popup" for errors. We will use AlertModal for that.
   const [error, setError] = useState('');
+
   const [bookedSlots, setBookedSlots] = useState([]);
+  const [alertState, setAlertState] = useState({
+    isOpen: false,
+    message: '',
+    type: 'error' // 'error' or 'success'
+  });
 
   useEffect(() => {
     if (!isOpen) return;
+    setAlertState({ isOpen: false, message: '', type: 'error' });
+    setError('');
+
     // fetch facilities
     const fetchFacilities = async () => {
       try {
@@ -28,20 +40,19 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
     fetchFacilities();
   }, [isOpen]);
 
-  // Prefill when modal opens with facility or selectedDate
+  // Prefill when modal opens
   useEffect(() => {
     if (!isOpen) return;
     if (facility) {
       setFormData((prev) => ({ ...prev, facilityId: facility._id }));
     }
     if (selectedDate) {
-      // selectedDate may be a Date object or YYYY-MM-DD string
       const dateStr = (selectedDate instanceof Date)
         ? selectedDate.toISOString().slice(0, 10)
         : (selectedDate || '').slice(0, 10);
       setFormData((prev) => ({ ...prev, date: dateStr }));
 
-      // fetch booked slots for this facility/date
+      // Fetch booked slots
       if (facility && facility._id) {
         const fetchBooked = async () => {
           try {
@@ -54,10 +65,9 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
         fetchBooked();
       }
     }
-    // prefill times if provided
     if (initialStartTime) setFormData(prev => ({ ...prev, startTime: initialStartTime }));
     if (initialEndTime) setFormData(prev => ({ ...prev, endTime: initialEndTime }));
-  }, [isOpen, facility, selectedDate]);
+  }, [isOpen, facility, selectedDate, initialStartTime, initialEndTime]);
 
   if (!isOpen) return null;
 
@@ -65,24 +75,63 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const showAlert = (message, type = 'error') => {
+    setAlertState({ isOpen: true, message, type });
+  };
+
+  const closeAlert = () => {
+    setAlertState({ ...alertState, isOpen: false });
+    // If it was a success alert, also close the modal
+    if (alertState.type === 'success') {
+      onClose();
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     try {
-      setLoading(true);
-
       const { facilityId, date, startTime, endTime, purpose } = formData;
       if (!facilityId || !date || !startTime || !endTime) {
-        setError('Please fill all required fields');
-        setLoading(false);
+        showAlert('Please fill all required fields');
         return;
       }
 
+      // --- DATE VALIDATION (No Past Dates) ---
+      // We compare purely based on the date string to avoid timezone issues:
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      if (date < todayStr) {
+        showAlert(`Error: Cannot book for a past date (${date}). Please select today or a future date.`);
+        return;
+      }
+
+      // --- TIME CONSTRUCTION & VALIDATION ---
       const start = new Date(`${date}T${startTime}`);
       const end = new Date(`${date}T${endTime}`);
 
-      // Final overlap check on client as UX guard
+      const startHour = start.getHours();
+      const endHour = end.getHours();
+      const endMin = end.getMinutes();
+
+      // 9 AM to 5 PM
+      if (startHour < 9 || startHour >= 17) {
+        showAlert('Facility is open from 9:00 AM to 5:00 PM.');
+        return;
+      }
+
+      if (endHour > 17 || (endHour === 17 && endMin > 0)) {
+        showAlert('Facility closes at 5:00 PM.');
+        return;
+      }
+
+      if (start >= end) {
+        showAlert('End time must be after start time.');
+        return;
+      }
+
+      // --- OVERLAP CHECK ---
       const overlaps = bookedSlots.some(b => {
         const bs = new Date(b.start).getTime();
         const be = new Date(b.end).getTime();
@@ -90,10 +139,11 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
       });
 
       if (overlaps) {
-        setError('Selected time overlaps with an existing booking. Please choose a different time.');
-        setLoading(false);
+        showAlert('Error: Selected time overlaps with an existing booking. Please choose a different time.');
         return;
       }
+
+      setLoading(true);
 
       const res = await api.post('/api/bookings', {
         facilityId,
@@ -103,21 +153,36 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
       });
 
       if (res.data && res.data.success) {
-        onClose();
+        showAlert('Success: Booking created successfully!', 'success');
       }
     } catch (err) {
       console.error('Booking error', err);
-      setError(err.response?.data?.message || 'Booking failed');
+      const msg = err.response?.data?.message || 'Booking failed';
+      showAlert(`Error: ${msg}`);
+      setError(msg); // Also keep inline error for fallback
     } finally {
       setLoading(false);
     }
   };
 
-  // Time slot helpers: generate 30-min increments
-  const generateTimeSlots = (intervalMins = 30) => {
+  // Convert 24h "HH:mm" to 12h "h:mm AM/PM"
+  const formatTime12h = (timeStr) => {
+    if (!timeStr) return '';
+    const [h, m] = timeStr.split(':');
+    let hour = parseInt(h, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12;
+    if (hour === 0) hour = 12;
+    return `${hour}:${m} ${ampm}`;
+  };
+
+  // Generate slots from 09:00 to 17:00
+  const generateTimeSlots = () => {
     const slots = [];
-    for (let h = 0; h < 24; h++) {
-      for (let m = 0; m < 60; m += intervalMins) {
+    // 9 AM (9) to 5 PM (17)
+    for (let h = 9; h <= 17; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        if (h === 17 && m > 0) break; // Don't go past 5:00 PM
         const hh = String(h).padStart(2, '0');
         const mm = String(m).padStart(2, '0');
         slots.push(`${hh}:${mm}`);
@@ -126,7 +191,7 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
     return slots;
   };
 
-  const timeSlots = generateTimeSlots(30);
+  const timeSlots = generateTimeSlots();
 
   const isSlotDisabled = (slot) => {
     if (!formData.date) return false;
@@ -141,10 +206,11 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
   const filteredEndSlots = () => {
     if (!formData.startTime) return timeSlots;
     const startMs = new Date(`${formData.date}T${formData.startTime}`).getTime();
+
     return timeSlots.filter(s => {
       const endMs = new Date(`${formData.date}T${s}`).getTime();
-      if (endMs <= startMs) return false;
-      // ensure range [startMs, endMs) does not overlap any booked slot
+      if (endMs <= startMs) return false; // End must be after start
+
       const overlap = bookedSlots.some(b => {
         const bs = new Date(b.start).getTime();
         const be = new Date(b.end).getTime();
@@ -155,111 +221,134 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-white/70 backdrop-blur-md"
-        onClick={onClose}
-      />
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-white/70 backdrop-blur-md" onClick={onClose} />
+        <div className="relative bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg mx-4">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Book a Facility</h2>
 
-      <div className="relative bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg mx-4">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Book a Facility</h2>
-
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-center">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <select
-            name="facilityId"
-            value={formData.facilityId}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select Facility *</option>
-            {facilities.map((f) => (
-              <option key={f._id} value={f._id}>{f.name}</option>
-            ))}
-          </select>
-
-          <input
-            name="date"
-            type="date"
-            value={formData.date}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <select
-              name="startTime"
-              value={formData.startTime}
-              onChange={handleChange}
-              required
-              className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select start</option>
-              {timeSlots.map(s => (
-                <option key={s} value={s} disabled={isSlotDisabled(s)}>{s}{isSlotDisabled(s) ? ' (booked)' : ''}</option>
-              ))}
-            </select>
-
-            <select
-              name="endTime"
-              value={formData.endTime}
-              onChange={handleChange}
-              required
-              className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select end</option>
-              {filteredEndSlots().map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-
-          {bookedSlots.length > 0 && (
-            <div className="bg-gray-50 border border-gray-200 p-3 rounded">
-              <h4 className="font-medium mb-2">Booked slots on selected date</h4>
-              <ul className="text-sm text-gray-700">
-                {bookedSlots.map((b) => (
-                  <li key={b._id}>{new Date(b.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(b.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} by {b.user?.username || b.user?.email || 'User'}</li>
-                ))}
-              </ul>
+          {/* Inline error fallback */}
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-center">
+              {error}
             </div>
           )}
 
-          <textarea
-            name="purpose"
-            placeholder="Purpose of booking (optional)"
-            value={formData.purpose}
-            onChange={handleChange}
-            rows={4}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-          />
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <select
+              name="facilityId"
+              value={formData.facilityId}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Facility *</option>
+              {facilities.map((f) => (
+                <option key={f._id} value={f._id}>{f.name}</option>
+              ))}
+            </select>
 
-          <div className="flex justify-end space-x-4 pt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50"
-            >
-              {loading ? 'Booking...' : 'Confirm Booking'}
-            </button>
-          </div>
-        </form>
+            <input
+              name="date"
+              type="date"
+              value={formData.date}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                <select
+                  name="startTime"
+                  value={formData.startTime}
+                  onChange={handleChange}
+                  required
+                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select start</option>
+                  {timeSlots.map(s => {
+                    const label = formatTime12h(s);
+                    const disabled = isSlotDisabled(s);
+                    return (
+                      <option key={s} value={s} disabled={disabled}>
+                        {label}{disabled ? ' (Booked)' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-1">End Time</label>
+                <select
+                  name="endTime"
+                  value={formData.endTime}
+                  onChange={handleChange}
+                  required
+                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select end</option>
+                  {filteredEndSlots().map(s => (
+                    <option key={s} value={s}>{formatTime12h(s)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {bookedSlots.length > 0 && (
+              <div className="bg-gray-50 border border-gray-200 p-3 rounded">
+                <h4 className="font-medium mb-2">Booked slots on selected date</h4>
+                <ul className="text-sm text-gray-700">
+                  {bookedSlots.map((b) => (
+                    <li key={b._id}>
+                      {new Date(b.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })} -
+                      {new Date(b.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
+                      <span className="text-xs text-gray-500 ml-1">(by {b.user?.username || 'User'})</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <textarea
+              name="purpose"
+              placeholder="Purpose of booking (optional)"
+              value={formData.purpose}
+              onChange={handleChange}
+              rows={4}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+
+            <div className="flex justify-end space-x-4 pt-6">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50"
+              >
+                {loading ? 'Booking...' : 'Confirm Booking'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+
+      {/* Custom Alert Modal */}
+      <AlertModal
+        isOpen={alertState.isOpen}
+        message={alertState.message}
+        type={alertState.type}
+        onClose={closeAlert}
+      />
+    </>
   );
 }
 

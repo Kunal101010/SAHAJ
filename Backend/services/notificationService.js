@@ -1,5 +1,11 @@
 const Notification = require('../model/notification');
 const User = require('../model/user');
+// Import with require to avoid circular dependency issues if possible, 
+// but socket.js doesn't depend on this service, so it should be fine.
+// We need to require inside functions or use a getter if circular dependency exists,
+// but here it seems safe at top level or lazy load.
+// Lazy loading getSocketIO inside the method is safer.
+const { getSocketIO } = require('../socket');
 
 const notificationService = {
   // Create notification for single user
@@ -19,6 +25,16 @@ const notificationService = {
 
       await notification.save();
       console.log(`Notification created for user ${recipientId}`);
+
+      // Emit real-time notification
+      try {
+        const io = getSocketIO();
+        io.top(recipientId.toString()).emit('new_notification', notification);
+      } catch (e) {
+        // Socket might not be init or other error, don't fail the request
+        console.log('Socket emit failed', e.message);
+      }
+
       return notification;
     } catch (err) {
       console.error('Error creating notification:', err);
@@ -29,7 +45,7 @@ const notificationService = {
   // Create notification for multiple users (e.g., all admins/managers)
   async notifyMultiple(recipientIds, data) {
     try {
-      const notifications = recipientIds.map(recipientId => ({
+      const notificationsData = recipientIds.map(recipientId => ({
         recipient: recipientId,
         type: data.type,
         title: data.title,
@@ -41,8 +57,20 @@ const notificationService = {
         actionUrl: data.actionUrl
       }));
 
-      const result = await Notification.insertMany(notifications);
+      const result = await Notification.insertMany(notificationsData);
       console.log(`Notifications created for ${recipientIds.length} users`);
+
+      // Emit real-time notifications
+      try {
+        const io = getSocketIO();
+        // result is array of saved documents
+        result.forEach(notification => {
+          io.to(notification.recipient.toString()).emit('new_notification', notification);
+        });
+      } catch (e) {
+        console.log('Socket emit failed', e.message);
+      }
+
       return result;
     } catch (err) {
       console.error('Error creating notifications:', err);

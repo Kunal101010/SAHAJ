@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../utils/auth';
-import Sidebar from '../components/Sidebar';
-import TopBar from '../components/TopBar';
+// import Sidebar from '../components/Sidebar';
+// import TopBar from '../components/TopBar';
 import api from '../services/api';
 
 function ManagerBookingsPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(getCurrentUser());
   const [bookings, setBookings] = useState([]);
-  const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [facilityFilter, setFacilityFilter] = useState('all');
   const [facilities, setFacilities] = useState([]);
+
+  const [activeTab, setActiveTab] = useState('upcoming');
 
   useEffect(() => {
     if (!user || !['manager', 'admin'].includes(user.role)) {
@@ -26,12 +27,12 @@ function ManagerBookingsPage() {
     setLoading(true);
     try {
       const [bookRes, facRes] = await Promise.all([
-        api.get('/api/bookings/me'),
+        api.get('/api/bookings/all'),
         api.get('/api/facilities'),
       ]);
       setBookings(bookRes.data.bookings || []);
       setFacilities(facRes.data.facilities || []);
-      applyFilters(bookRes.data.bookings || []);
+      // Filters are applied in the render or via memo
     } catch (err) {
       console.error('Failed to fetch bookings:', err);
     } finally {
@@ -39,17 +40,30 @@ function ManagerBookingsPage() {
     }
   };
 
-  const applyFilters = (data) => {
-    let filtered = data;
+  const getFilteredBookings = () => {
+    let filtered = bookings;
+
+    // 1. Filter by Facility
     if (facilityFilter !== 'all') {
       filtered = filtered.filter(b => b.facility._id === facilityFilter);
     }
-    setFilteredBookings(filtered);
+
+    // 2. Filter by Date (Upcoming vs Completed)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+
+    if (activeTab === 'upcoming') {
+      // "Today and After"
+      filtered = filtered.filter(b => new Date(b.start) >= today);
+    } else {
+      // "Before Today"
+      filtered = filtered.filter(b => new Date(b.start) < today);
+    }
+
+    return filtered;
   };
 
-  useEffect(() => {
-    applyFilters(bookings);
-  }, [facilityFilter, bookings]);
+  const currentBookings = getFilteredBookings();
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -69,19 +83,46 @@ function ManagerBookingsPage() {
       <div className="p-8 max-w-7xl mx-auto">
         <h2 className="text-3xl font-bold text-gray-800 mb-8">Facility Bookings Overview</h2>
 
-        {/* Filter */}
+        {/* Filters & Controls */}
         <div className="bg-white p-6 rounded-2xl shadow-lg mb-8">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Facility</label>
-          <select
-            value={facilityFilter}
-            onChange={(e) => setFacilityFilter(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All Facilities</option>
-            {facilities.map(f => (
-              <option key={f._id} value={f._id}>{f.name}</option>
-            ))}
-          </select>
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+
+            {/* Tabs */}
+            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => setActiveTab('upcoming')}
+                className={`px-6 py-2 rounded-md font-medium transition ${activeTab === 'upcoming'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+                  }`}
+              >
+                Upcoming
+              </button>
+              <button
+                onClick={() => setActiveTab('completed')}
+                className={`px-6 py-2 rounded-md font-medium transition ${activeTab === 'completed'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+                  }`}
+              >
+                Completed / Past
+              </button>
+            </div>
+
+            {/* Facility Dropdown */}
+            <div className="w-full md:w-64">
+              <select
+                value={facilityFilter}
+                onChange={(e) => setFacilityFilter(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Facilities</option>
+                {facilities.map(f => (
+                  <option key={f._id} value={f._id}>{f.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* Bookings List */}
@@ -89,12 +130,12 @@ function ManagerBookingsPage() {
           <div className="text-center py-12 text-gray-500">Loading bookings...</div>
         ) : (
           <div className="space-y-4">
-            {filteredBookings.length === 0 ? (
+            {currentBookings.length === 0 ? (
               <div className="bg-white p-12 rounded-2xl shadow-lg text-center text-gray-500">
-                No bookings found.
+                No {activeTab} bookings found.
               </div>
             ) : (
-              filteredBookings.map(booking => (
+              currentBookings.map(booking => (
                 <div key={booking._id} className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
                     <div>

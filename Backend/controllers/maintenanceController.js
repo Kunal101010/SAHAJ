@@ -161,6 +161,13 @@ exports.updateStatus = async (req, res) => {
     request.status = req.body.status;
     await request.save();
 
+    // Emit Socket Event
+    try {
+      getSocketIO().emit('request_updated', request);
+    } catch (e) {
+      console.error('Socket emit error:', e.message);
+    }
+
     // Send notifications when status changes to "Completed"
     if (req.body.status === 'Completed') {
       const adminAndManagerIds = await notificationService.getUsersByRole(['admin', 'manager']);
@@ -217,6 +224,13 @@ exports.assignTechnician = async (req, res) => {
     request.assignedTo = technicianId;
     request.status = 'In Progress';
     await request.save();
+
+    // Emit Socket Event
+    try {
+      getSocketIO().emit('request_updated', request);
+    } catch (e) {
+      console.error('Socket emit error:', e.message);
+    }
 
     // Get technician details for notification
     const technician = await User.findById(technicianId).select('firstName lastName username');
