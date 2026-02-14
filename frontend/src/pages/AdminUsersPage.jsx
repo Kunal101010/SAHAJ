@@ -7,9 +7,12 @@ import api from '../services/api';
 import AddUserModal from '../components/AddUserModal';
 import EditUserModal from '../components/EditUserModal'
 
+import { useToast } from '../context/ToastContext';
+
 function AdminUsersPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(getCurrentUser());
+  const { showToast } = useToast();
 
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
@@ -31,7 +34,7 @@ function AdminUsersPage() {
       const res = await api.get('/api/admin/users'); // We'll create this backend route
       setUsers(res.data.data);
     } catch (err) {
-      alert('Failed to load users');
+      showToast('Failed to load users', 'error');
       console.error(err);
     } finally {
       setLoading(false);
@@ -92,9 +95,9 @@ function AdminUsersPage() {
                     <td className="px-6 py-4 text-gray-600">{u.email}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${u.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                          u.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-                            u.role === 'technician' ? 'bg-orange-100 text-orange-800' :
-                              'bg-green-100 text-green-800'
+                        u.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                          u.role === 'technician' ? 'bg-orange-100 text-orange-800' :
+                            'bg-green-100 text-green-800'
                         }`}>
                         {u.role}
                       </span>

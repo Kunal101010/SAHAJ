@@ -1,10 +1,7 @@
 const Notification = require('../model/notification');
 const User = require('../model/user');
-// Import with require to avoid circular dependency issues if possible, 
-// but socket.js doesn't depend on this service, so it should be fine.
-// We need to require inside functions or use a getter if circular dependency exists,
-// but here it seems safe at top level or lazy load.
-// Lazy loading getSocketIO inside the method is safer.
+// Import with require (lazy load inside function to avoid circular dep issues if any, 
+// though top level might be fine if socket.js is independent)
 const { getSocketIO } = require('../socket');
 
 const notificationService = {
@@ -29,7 +26,7 @@ const notificationService = {
       // Emit real-time notification
       try {
         const io = getSocketIO();
-        io.top(recipientId.toString()).emit('new_notification', notification);
+        io.to(recipientId.toString()).emit('new_notification', notification);
       } catch (e) {
         // Socket might not be init or other error, don't fail the request
         console.log('Socket emit failed', e.message);

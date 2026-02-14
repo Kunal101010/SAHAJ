@@ -1,28 +1,31 @@
+// src/pages/TechnicianMaintenancePage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../utils/auth';
 import api from '../services/api';
-// import Sidebar from '../components/Sidebar';
-// import TopBar from '../components/TopBar';
 import NewRequestModal from '../components/NewRequestModal';
 import ViewEditRequestModal from '../components/ViewEditRequestModal';
-import Toast from '../components/Toast';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useToast } from '../context/ToastContext';
 
 function TechnicianMaintenancePage() {
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
+  const { showToast } = useToast();
 
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
 
+  // State for Confirmation Modal
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [taskToCompleteId, setTaskToCompleteId] = useState(null);
+
   const [myRequests, setMyRequests] = useState([]);
   const [assignedRequests, setAssignedRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'technician') {
@@ -83,21 +86,25 @@ function TechnicianMaintenancePage() {
     fetchAll();
   };
 
-  const showToast = (message, type = 'success') => {
-    setToast({ isVisible: true, message, type });
+  // Open confirmation modal instead of window.confirm
+  const initiateMarkCompleted = (requestId) => {
+    setTaskToCompleteId(requestId);
+    setIsConfirmModalOpen(true);
   };
 
-  const handleMarkCompleted = async (requestId) => {
-    if (window.confirm('Mark this task as completed?')) {
-      try {
-        await api.patch(`/api/maintenance/requests/${requestId}/status`, {
-          status: 'Completed'
-        });
-        showToast('Task marked as completed!', 'success');
-        fetchAll();
-      } catch (err) {
-        showToast('Failed to mark task as completed: ' + (err.response?.data?.message || err.message), 'error');
-      }
+  const handleConfirmCompletion = async () => {
+    if (!taskToCompleteId) return;
+
+    try {
+      await api.patch(`/api/maintenance/requests/${taskToCompleteId}/status`, {
+        status: 'Completed'
+      });
+      showToast('Task marked as completed!', 'success');
+      fetchAll();
+    } catch (err) {
+      showToast('Failed to mark task as completed: ' + (err.response?.data?.message || err.message), 'error');
+    } finally {
+      setTaskToCompleteId(null);
     }
   };
 
@@ -210,7 +217,7 @@ function TechnicianMaintenancePage() {
                             </button>
                             {req.status !== 'Completed' && (
                               <button
-                                onClick={() => handleMarkCompleted(req._id)}
+                                onClick={() => initiateMarkCompleted(req._id)}
                                 className="px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
                               >
                                 Completed
@@ -242,13 +249,16 @@ function TechnicianMaintenancePage() {
         onRequestUpdated={handleRequestUpdated}
       />
 
-      <Toast
-        isVisible={toast.isVisible}
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast({ ...toast, isVisible: false })}
+      <ConfirmationModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={handleConfirmCompletion}
+        title="Complete Task"
+        message="Are you sure you want to mark this task as completed? This action cannot be undone."
+        confirmText="Yes, Complete"
+        cancelText="Cancel"
       />
-    </div >
+    </div>
   );
 }
 

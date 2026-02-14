@@ -1,12 +1,48 @@
-// src/components/Sidebar.jsx
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getCurrentUser } from '../utils/auth';
+import { useSocket } from '../context/SocketContext';
+import api from '../services/api';
 
 function Sidebar() {
   const user = getCurrentUser();
+  const socket = useSocket();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const isAdmin = user?.role === 'admin';
   const isManager = user?.role === 'manager';
+
+  useEffect(() => {
+    if (user) {
+      fetchUnreadCount();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewNotification = () => {
+      setUnreadCount(prev => prev + 1);
+    };
+
+    socket.on('new_notification', handleNewNotification);
+
+    return () => {
+      socket.off('new_notification', handleNewNotification);
+    };
+  }, [socket]);
+
+  const fetchUnreadCount = async () => {
+    try {
+      // Assuming GET /api/notifications returns { unreadCount: number }
+      const res = await api.get('/api/notifications?limit=1');
+      if (res.data.success) {
+        setUnreadCount(res.data.unreadCount || 0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch unread notifications', err);
+    }
+  };
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', roles: ['employee', 'technician', 'manager', 'admin'] },
@@ -14,7 +50,7 @@ function Sidebar() {
     { name: 'Technician Tasks', path: '/technician/maintenance', roles: ['technician'] },
     { name: 'Facility Booking', path: '/facility-booking', roles: ['employee', 'manager', 'admin'] },
     { name: 'Reports & Analytics', path: '/reports-analytics', roles: ['manager', 'admin'] },
-    { name: 'Notifications', path: '/notifications', roles: ['employee', 'technician', 'manager', 'admin'] },
+    { name: 'Notifications', path: '/notifications', roles: ['employee', 'technician', 'manager', 'admin'], badge: unreadCount },
     { name: 'Settings', path: '/settings', roles: ['employee', 'technician', 'manager', 'admin'] },
   ];
 
@@ -52,9 +88,14 @@ function Sidebar() {
           <Link
             key={item.name}
             to={item.path}
-            className="block py-3 px-4 mb-1 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition font-medium"
+            className="block py-3 px-4 mb-1 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition font-medium flex justify-between items-center"
           >
-            {item.name}
+            <span>{item.name}</span>
+            {item.badge > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                {item.badge}
+              </span>
+            )}
           </Link>
         ))}
 

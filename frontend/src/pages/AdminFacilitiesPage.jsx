@@ -7,15 +7,22 @@ import api from '../services/api';
 // import TopBar from '../components/TopBar';
 import AddFacilityModal from '../components/AddFacilityModal';
 import EditFacilityModal from '../components/EditFacilityModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useToast } from '../context/ToastContext';
 
 function AdminFacilitiesPage() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [facilities, setFacilities] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingFacility, setEditingFacility] = useState(null);
+
+  // State for delete confirmation
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [facilityToDelete, setFacilityToDelete] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -39,7 +46,7 @@ function AdminFacilitiesPage() {
       const res = await api.get('/api/admin/facilities');
       setFacilities(res.data.data || []);
     } catch (err) {
-      alert('Failed to load facilities');
+      showToast('Failed to load facilities', 'error');
       console.error(err);
     } finally {
       setLoading(false);
@@ -51,14 +58,21 @@ function AdminFacilitiesPage() {
     f.location.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this facility?')) return;
+  const confirmDelete = (id) => {
+    setFacilityToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!facilityToDelete) return;
     try {
-      await api.delete(`/api/admin/facilities/${id}`);
+      await api.delete(`/api/admin/facilities/${facilityToDelete}`);
       fetchFacilities();
-      alert('Facility deleted successfully');
+      showToast('Facility deleted successfully', 'success');
     } catch (err) {
-      alert('Failed to delete facility');
+      showToast('Failed to delete facility', 'error');
+    } finally {
+      setFacilityToDelete(null);
     }
   };
 
@@ -109,7 +123,7 @@ function AdminFacilitiesPage() {
                     Edit
                   </button>
                   <button
-                    onClick={() => handleDelete(f._id)}
+                    onClick={() => confirmDelete(f._id)}
                     className="text-red-600 hover:text-red-800 font-medium"
                   >
                     Delete
@@ -137,6 +151,17 @@ function AdminFacilitiesPage() {
         onClose={() => setEditingFacility(null)}
         facility={editingFacility}
         onSuccess={fetchFacilities}
+      />
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Facility"
+        message="Are you sure you want to delete this facility? This action cannot be undone."
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        isDangerous={true}
       />
     </div >
   );

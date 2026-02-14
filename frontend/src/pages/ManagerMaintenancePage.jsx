@@ -1,3 +1,4 @@
+// src/pages/ManagerMaintenancePage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../utils/auth';
@@ -6,11 +7,13 @@ import api from '../services/api';
 // import TopBar from '../components/TopBar';
 import NewRequestModal from '../components/NewRequestModal';
 import ViewEditRequestModal from '../components/ViewEditRequestModal';
-import Toast from '../components/Toast';
+// import Toast from '../components/Toast';
+import { useToast } from '../context/ToastContext';
 
 function ManagerMaintenancePage() {
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
+  const { showToast } = useToast();
 
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,7 +24,7 @@ function ManagerMaintenancePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
+  // Removed local toast state
 
   const isAdmin = currentUser?.role === 'admin';
   const isManager = currentUser?.role === 'manager';
@@ -70,10 +73,6 @@ function ManagerMaintenancePage() {
   const handleRequestUpdated = () => {
     setIsViewModalOpen(false);
     fetchRequests();
-  };
-
-  const showToast = (message, type = 'success') => {
-    setToast({ isVisible: true, message, type });
   };
 
   return (
@@ -131,9 +130,9 @@ function ManagerMaintenancePage() {
                       <div>
                         <strong className="text-gray-700">Priority:</strong>
                         <span className={`ml-2 px-3 py-1 rounded-full text-xs font-bold ${req.priority === 'Critical' ? 'bg-red-200 text-red-800' :
-                            req.priority === 'High' ? 'bg-orange-200 text-orange-800' :
-                              req.priority === 'Medium' ? 'bg-yellow-200 text-yellow-800' :
-                                'bg-green-200 text-green-800'
+                          req.priority === 'High' ? 'bg-orange-200 text-orange-800' :
+                            req.priority === 'Medium' ? 'bg-yellow-200 text-yellow-800' :
+                              'bg-green-200 text-green-800'
                           }`}>
                           {req.priority}
                         </span>
@@ -144,8 +143,8 @@ function ManagerMaintenancePage() {
 
                   <div className="flex flex-col items-end gap-4 ml-8">
                     <span className={`px-5 py-2 rounded-full text-base font-bold ${req.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                        req.status === 'Pending' ? 'bg-red-100 text-red-800' :
-                          'bg-blue-100 text-blue-800'
+                      req.status === 'Pending' ? 'bg-red-100 text-red-800' :
+                        'bg-blue-100 text-blue-800'
                       }`}>
                       {req.status}
                     </span>
@@ -182,12 +181,7 @@ function ManagerMaintenancePage() {
         onRequestUpdated={handleRequestUpdated}
       />
 
-      <Toast
-        isVisible={toast.isVisible}
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast({ ...toast, isVisible: false })}
-      />
+      {/* Removed local Toast component */}
     </div>
   );
 }

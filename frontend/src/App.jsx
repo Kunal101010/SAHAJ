@@ -69,10 +69,17 @@ function AnimatedRoutes() {
   );
 }
 
+import { SocketProvider } from './context/SocketContext';
+import { ToastProvider } from './context/ToastContext';
+
 function App() {
   return (
     <Router>
-      <AnimatedRoutes />
+      <SocketProvider>
+        <ToastProvider>
+          <AnimatedRoutes />
+        </ToastProvider>
+      </SocketProvider>
     </Router>
   );
 }

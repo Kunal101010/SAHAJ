@@ -180,3 +180,103 @@ exports.getAllBookings = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// Get Booking Statistics
+exports.getBookingStats = async (req, res) => {
+  try {
+    const totalBookings = await Booking.countDocuments();
+
+    // Group by Facility
+    const bookingsByFacility = await Booking.aggregate([
+      {
+        $group: {
+          _id: '$facility',
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $lookup: {
+          from: 'facilities',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'facilityDetails'
+        }
+      },
+      {
+        $unwind: '$facilityDetails'
+      },
+      {
+        $project: {
+          name: '$facilityDetails.name',
+          value: '$count'
+        }
+      },
+      { $sort: { value: -1 } }
+    ]);
+
+    // Group by Status
+    const bookingsByStatus = await Booking.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          name: '$_id',
+          value: '$count'
+        }
+      }
+    ]);
+
+    // Monthly trend for last 12 months
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
+    twelveMonthsAgo.setDate(1);
+    twelveMonthsAgo.setHours(0, 0, 0, 0);
+
+    const monthlyTrend = await Booking.aggregate([
+      {
+        $match: {
+          start: { $gte: twelveMonthsAgo }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$start' },
+            month: { $month: '$start' }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { '_id.year': 1, '_id.month': 1 }
+      }
+    ]);
+
+    // Format monthly trend
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const formattedTrend = monthlyTrend.map(item => {
+      return {
+        name: `${monthNames[item._id.month - 1]} ${item._id.year}`,
+        bookings: item.count
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        total: totalBookings,
+        byFacility: bookingsByFacility,
+        byStatus: bookingsByStatus,
+        trend: formattedTrend
+      }
+    });
+
+  } catch (error) {
+    console.error('getBookingStats error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

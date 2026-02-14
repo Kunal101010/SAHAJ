@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../utils/auth';
 import api from '../services/api';
+import { useSocket } from '../context/SocketContext';
 // import Sidebar from '../components/Sidebar';
 // import TopBar from '../components/TopBar';
 import StatCard from '../components/StatCard';
@@ -20,6 +21,8 @@ function DashboardPage() {
   const [recent, setRecent] = useState([]);
 
   // Fetch data when component loads
+  const socket = useSocket();
+
   useEffect(() => {
     if (!user) {
       navigate('/login'); // Redirect if not logged in
@@ -27,6 +30,27 @@ function DashboardPage() {
     }
     fetchDashboardData();
   }, []);
+
+  // Listen for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleUpdate = () => {
+      fetchDashboardData();
+    };
+
+    socket.on('request_created', handleUpdate);
+    socket.on('request_updated', handleUpdate);
+    socket.on('request_assigned', handleUpdate);
+    socket.on('request_status_updated', handleUpdate); // Assuming this event exists or covered by request_updated
+
+    return () => {
+      socket.off('request_created', handleUpdate);
+      socket.off('request_updated', handleUpdate);
+      socket.off('request_assigned', handleUpdate);
+      socket.off('request_status_updated', handleUpdate);
+    };
+  }, [socket]);
 
   const fetchDashboardData = async () => {
     try {

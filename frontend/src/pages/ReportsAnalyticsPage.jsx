@@ -9,10 +9,17 @@ import LineChartComponent from '../components/LineChartComponent';
 
 function ReportsAnalyticsPage() {
     const [loading, setLoading] = useState(true);
+    // Maintenance Stats
     const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, completed: 0 });
     const [categoryData, setCategoryData] = useState([]);
     const [statusData, setStatusData] = useState([]);
     const [trendData, setTrendData] = useState([]);
+
+    // Booking Stats
+    const [bookingStats, setBookingStats] = useState({ total: 0 });
+    const [bookingByFacility, setBookingByFacility] = useState([]);
+    const [bookingTrend, setBookingTrend] = useState([]);
+    const [bookingStatusData, setBookingStatusData] = useState([]);
 
     useEffect(() => {
         fetchReportData();
@@ -21,13 +28,21 @@ function ReportsAnalyticsPage() {
     const fetchReportData = async () => {
         try {
             setLoading(true);
-            const [statsRes, categoryRes, statusRes, trendRes] = await Promise.all([
+            const [
+                statsRes,
+                categoryRes,
+                statusRes,
+                trendRes,
+                bookingRes
+            ] = await Promise.all([
                 api.get('/api/maintenance/stats'),
                 api.get('/api/maintenance/by-category'),
                 api.get('/api/maintenance/status-distribution'),
-                api.get('/api/maintenance/monthly-trend')
+                api.get('/api/maintenance/monthly-trend'),
+                api.get('/api/bookings/stats')
             ]);
 
+            // Maintenance Data
             setStats(statsRes.data.data);
 
             setCategoryData(
@@ -40,7 +55,16 @@ function ReportsAnalyticsPage() {
                 statusRes.data.data.map(item => ({ name: item._id, value: item.count }))
             );
 
-            setTrendData(trendRes.data.data); // Passed directly to LineChartComponent which handles mapping
+            setTrendData(trendRes.data.data);
+
+            // Booking Data
+            if (bookingRes.data && bookingRes.data.data) {
+                const bData = bookingRes.data.data;
+                setBookingStats({ total: bData.total });
+                setBookingByFacility(bData.byFacility); // Already formatted {name, value}
+                setBookingTrend(bData.trend); // Already formatted {name, bookings}
+                setBookingStatusData(bData.byStatus); // Already formatted {name, value}
+            }
 
         } catch (err) {
             console.error('Failed to fetch report data', err);
@@ -76,55 +100,107 @@ function ReportsAnalyticsPage() {
                 </button>
             </motion.div>
 
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 print:grid-cols-4 print:gap-4 print:mb-4"
-            >
-                <div className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg">
-                    <StatCard title="Total Requests" value={stats.total} icon="📝" color="blue" />
-                </div>
-                <div className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg">
-                    <StatCard title="Completed" value={stats.completed} icon="✅" color="green" />
-                </div>
-                <div className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg">
-                    <StatCard title="Pending" value={stats.pending} icon="⏳" color="red" />
-                </div>
-                <div className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg">
-                    <StatCard title="In Progress" value={stats.inProgress} icon="⚙️" color="yellow" />
-                </div>
-            </motion.div>
+            {/* --- Maintenance Section --- */}
+            <div className="mb-12 print:break-inside-avoid">
+                <h2 className="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Maintenance Overview</h2>
 
-            {/* Charts Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 print:grid-cols-2 print:gap-4 print:mb-4">
                 <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 print:grid-cols-4 print:gap-4 print:mb-4"
                 >
-                    <LineChartComponent data={trendData} />
+                    <div className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg">
+                        <StatCard title="Total Requests" value={stats.total} icon="📝" color="blue" />
+                    </div>
+                    <div className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg">
+                        <StatCard title="Completed" value={stats.completed} icon="✅" color="green" />
+                    </div>
+                    <div className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg">
+                        <StatCard title="Pending" value={stats.pending} icon="⏳" color="red" />
+                    </div>
+                    <div className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg">
+                        <StatCard title="In Progress" value={stats.inProgress} icon="⚙️" color="yellow" />
+                    </div>
                 </motion.div>
 
+                {/* Maintenance Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 print:grid-cols-2 print:gap-4 print:mb-4">
+                    <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg"
+                    >
+                        <LineChartComponent data={trendData} title="Maintenance Request Trends" lineName="Requests" />
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg"
+                    >
+                        <BarChartComponent data={categoryData} />
+                    </motion.div>
+                </div>
+
                 <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="mb-8 print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg"
                 >
-                    <BarChartComponent data={categoryData} />
+                    <PieChartComponent data={statusData} title="Maintenance Status" />
                 </motion.div>
             </div>
 
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="mb-8 print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg"
-            >
-                <PieChartComponent data={statusData} />
-            </motion.div>
+            {/* --- Booking Section --- */}
+            <div className="print:break-inside-avoid">
+                <h2 className="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Facility Booking Overview</h2>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 print:grid-cols-4 print:gap-4 print:mb-4"
+                >
+                    <div className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg">
+                        <StatCard title="Total Bookings" value={bookingStats.total} icon="📅" color="purple" />
+                    </div>
+                </motion.div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 print:grid-cols-2 print:gap-4 print:mb-4">
+                    <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.6 }}
+                        className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg"
+                    >
+                        <LineChartComponent data={bookingTrend} title="Booking Trends (Monthly)" lineName="Bookings" />
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.7 }}
+                        className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg"
+                    >
+                        <BarChartComponent data={bookingByFacility} title="Bookings by Facility" />
+                    </motion.div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.8 }}
+                        className="print:break-inside-avoid print:shadow-none print:border print:border-gray-200 rounded-lg"
+                    >
+                        <PieChartComponent data={bookingStatusData} title="Booking Status" />
+                    </motion.div>
+                </div>
+            </div>
 
         </div>
     );

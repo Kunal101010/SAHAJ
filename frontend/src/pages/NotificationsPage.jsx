@@ -1,6 +1,10 @@
+// src/pages/NotificationsPage.jsx
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import api from '../services/api';
+import { useSocket } from '../context/SocketContext';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useToast } from '../context/ToastContext';
 
 function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
@@ -8,6 +12,8 @@ function NotificationsPage() {
   const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchNotifications();
@@ -33,10 +39,28 @@ function NotificationsPage() {
       }
     } catch (err) {
       console.error('Error fetching notifications:', err);
+      showToast('Failed to load notifications', 'error');
     } finally {
       setLoading(false);
     }
   };
+
+  // Real-time listener
+  const socket = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewNotification = (notification) => {
+      // Add to list if it matches filter
+      setNotifications(prev => [notification, ...prev]);
+    };
+
+    socket.on('new_notification', handleNewNotification);
+
+    return () => {
+      socket.off('new_notification', handleNewNotification);
+    };
+  }, [socket]);
 
   const handleMarkAsRead = async (notificationId) => {
     try {
@@ -48,6 +72,7 @@ function NotificationsPage() {
       );
     } catch (err) {
       console.error('Error marking notification as read:', err);
+      showToast('Failed to mark notification as read', 'error');
     }
   };
 
@@ -55,8 +80,10 @@ function NotificationsPage() {
     try {
       await api.patch('/api/notifications/read/all');
       setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+      showToast('All notifications marked as read', 'success');
     } catch (err) {
       console.error('Error marking all as read:', err);
+      showToast('Failed to mark all as read', 'error');
     }
   };
 
@@ -64,19 +91,21 @@ function NotificationsPage() {
     try {
       await api.delete(`/api/notifications/${notificationId}`);
       setNotifications(notifications.filter(n => n._id !== notificationId));
+      showToast('Notification deleted', 'success');
     } catch (err) {
       console.error('Error deleting notification:', err);
+      showToast('Failed to delete notification', 'error');
     }
   };
 
   const handleClearAll = async () => {
-    if (!window.confirm('Are you sure you want to delete all notifications?')) return;
-
     try {
       await api.delete('/api/notifications/clear/all');
       setNotifications([]);
+      showToast('All notifications cleared', 'success');
     } catch (err) {
       console.error('Error clearing notifications:', err);
+      showToast('Failed to clear notifications', 'error');
     }
   };
 
@@ -140,21 +169,19 @@ function NotificationsPage() {
           <div className="flex gap-2">
             <button
               onClick={() => { setFilter('all'); setPage(1); }}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                filter === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'all'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               All
             </button>
             <button
               onClick={() => { setFilter('unread'); setPage(1); }}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                filter === 'unread'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'unread'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               Unread
             </button>
@@ -170,7 +197,7 @@ function NotificationsPage() {
               </button>
             )}
             <button
-              onClick={handleClearAll}
+              onClick={() => setIsClearAllModalOpen(true)}
               className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition font-medium text-sm"
             >
               Clear All
@@ -271,6 +298,17 @@ function NotificationsPage() {
           )}
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={isClearAllModalOpen}
+        onClose={() => setIsClearAllModalOpen(false)}
+        onConfirm={handleClearAll}
+        title="Clear All Notifications"
+        message="Are you sure you want to delete ALL notifications? This action cannot be undone."
+        confirmText="Yes, Clear All"
+        cancelText="Cancel"
+        isDangerous={true}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import api from '../services/api';
+import ModalWrapper from './ModalWrapper';
 
 function AddFacilityModal({ isOpen, onClose, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -10,7 +11,7 @@ function AddFacilityModal({ isOpen, onClose, onSuccess }) {
   });
   const [loading, setLoading] = useState(false);
 
-  if (!isOpen) return null;
+  // if (!isOpen) return null; // ModalWrapper handles this
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -32,24 +33,20 @@ function AddFacilityModal({ isOpen, onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-white/70 backdrop-blur-md" onClick={onClose} />
-      <div className="relative bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md mx-4">
-        <h2 className="text-2xl font-bold mb-6">Add New Facility</h2>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <input name="name" placeholder="Facility Name *" onChange={handleChange} required className="w-full px-4 py-3 border rounded-lg" />
-          <input name="capacity" type="number" placeholder="Capacity *" onChange={handleChange} required min="1" className="w-full px-4 py-3 border rounded-lg" />
-          <input name="location" placeholder="Location *" onChange={handleChange} required className="w-full px-4 py-3 border rounded-lg" />
-          <textarea name="description" placeholder="Description" onChange={handleChange} rows="4" className="w-full px-4 py-3 border rounded-lg resize-none" />
-          <div className="flex justify-end space-x-4 pt-4">
-            <button type="button" onClick={onClose} className="px-6 py-3 bg-gray-200 rounded-lg">Cancel</button>
-            <button type="submit" disabled={loading} className="px-6 py-3 bg-green-600 text-white rounded-lg">
-              {loading ? 'Adding...' : 'Add Facility'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <ModalWrapper isOpen={isOpen} onClose={onClose} title="Add New Facility">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <input name="name" placeholder="Facility Name *" onChange={handleChange} required className="w-full px-4 py-3 border rounded-lg" />
+        <input name="capacity" type="number" placeholder="Capacity *" onChange={handleChange} required min="1" className="w-full px-4 py-3 border rounded-lg" />
+        <input name="location" placeholder="Location *" onChange={handleChange} required className="w-full px-4 py-3 border rounded-lg" />
+        <textarea name="description" placeholder="Description" onChange={handleChange} rows="4" className="w-full px-4 py-3 border rounded-lg resize-none" />
+        <div className="flex justify-end space-x-4 pt-4">
+          <button type="button" onClick={onClose} className="px-6 py-3 bg-gray-200 rounded-lg">Cancel</button>
+          <button type="submit" disabled={loading} className="px-6 py-3 bg-green-600 text-white rounded-lg">
+            {loading ? 'Adding...' : 'Add Facility'}
+          </button>
+        </div>
+      </form>
+    </ModalWrapper>
   );
 }
 

@@ -5,8 +5,11 @@ import { getCurrentUser } from '../utils/auth';
 // import TopBar from '../components/TopBar';
 import api from '../services/api';
 
+import { useSocket } from '../context/SocketContext';
+
 function ManagerBookingsPage() {
   const navigate = useNavigate();
+  const socket = useSocket();
   const [user, setUser] = useState(getCurrentUser());
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +25,26 @@ function ManagerBookingsPage() {
     }
     fetchData();
   }, []);
+
+  // Real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('booking_created', (newBooking) => {
+      console.log('New booking received via socket:', newBooking);
+      fetchData(); // Simplest approach: refetch all
+    });
+
+    socket.on('booking_cancelled', (data) => {
+      console.log('Booking cancelled via socket:', data);
+      fetchData();
+    });
+
+    return () => {
+      socket.off('booking_created');
+      socket.off('booking_cancelled');
+    };
+  }, [socket]);
 
   const fetchData = async () => {
     setLoading(true);

@@ -1,14 +1,14 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-function BarChartComponent({ data = [] }) {
+function BarChartComponent({ data = [], title = "Requests by Category" }) {
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">
-      <h3 className="text-lg font-semibold mb-4">Requests by Category</h3>
+      <h3 className="text-lg font-semibold mb-4">{title}</h3>
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" />
-          <YAxis 
+          <YAxis
             allowDecimals={false}     // Ensures only whole numbers: 1, 2, 3...
             domain={[0, 'dataMax + 1']} // Starts from 0, extends slightly above max
           />

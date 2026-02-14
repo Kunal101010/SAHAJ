@@ -1,11 +1,11 @@
 import { PieChart, Pie, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-function PieChartComponent({ data = [] }) {
-  const COLORS = ['#22c55e', '#ef4444', '#3b82f6']; // Completed, Pending, In Progress
+function PieChartComponent({ data = [], title = "Status Distribution" }) {
+  const COLORS = ['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#6366f1']; // Completed, Pending, In Progress, etc.
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">
-      <h3 className="text-lg font-semibold mb-4">Status Distribution</h3>
+      <h3 className="text-lg font-semibold mb-4">{title}</h3>
       <ResponsiveContainer width="100%" height={200}>
         <PieChart>
           <Pie

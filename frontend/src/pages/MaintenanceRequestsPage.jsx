@@ -9,9 +9,12 @@ import NewRequestModal from '../components/NewRequestModal';
 import ViewEditRequestModal from '../components/ViewEditRequestModal';
 import Toast from '../components/Toast';
 
+import { useSocket } from '../context/SocketContext';
+
 function MaintenanceRequestsPage() {
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
+  const socket = useSocket();
 
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,6 +34,27 @@ function MaintenanceRequestsPage() {
     }
     fetchRequests();
   }, [navigate]);
+
+  // Real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRequestUpdate = (data) => {
+      console.log('Request update received:', data);
+      fetchRequests();
+      showToast('Maintenance requests updated', 'info');
+    };
+
+    socket.on('request_created', handleRequestUpdate);
+    socket.on('request_updated', handleRequestUpdate);
+    socket.on('request_assigned', handleRequestUpdate);
+
+    return () => {
+      socket.off('request_created', handleRequestUpdate);
+      socket.off('request_updated', handleRequestUpdate);
+      socket.off('request_assigned', handleRequestUpdate);
+    };
+  }, [socket]);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -136,9 +160,9 @@ function MaintenanceRequestsPage() {
                       <div>
                         <strong className="text-gray-700">Priority:</strong>
                         <span className={`ml-2 px-3 py-1 rounded-full text-xs font-bold ${req.priority === 'Critical' ? 'bg-red-200 text-red-800' :
-                            req.priority === 'High' ? 'bg-orange-200 text-orange-800' :
-                              req.priority === 'Medium' ? 'bg-yellow-200 text-yellow-800' :
-                                'bg-green-200 text-green-800'
+                          req.priority === 'High' ? 'bg-orange-200 text-orange-800' :
+                            req.priority === 'Medium' ? 'bg-yellow-200 text-yellow-800' :
+                              'bg-green-200 text-green-800'
                           }`}>
                           {req.priority}
                         </span>
@@ -154,8 +178,8 @@ function MaintenanceRequestsPage() {
 
                   <div className="flex flex-col items-end gap-4 ml-8">
                     <span className={`px-5 py-2 rounded-full text-base font-bold ${req.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                        req.status === 'Pending' ? 'bg-red-100 text-red-800' :
-                          'bg-blue-100 text-blue-800'
+                      req.status === 'Pending' ? 'bg-red-100 text-red-800' :
+                        'bg-blue-100 text-blue-800'
                       }`}>
                       {req.status}
                     </span>

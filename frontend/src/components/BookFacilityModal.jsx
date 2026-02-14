@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import AlertModal from './AlertModal';
+import ModalWrapper from './ModalWrapper';
 
 function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialStartTime, initialEndTime }) {
   const [facilities, setFacilities] = useState([]);
@@ -12,15 +13,13 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
     purpose: '',
   });
   const [loading, setLoading] = useState(false);
-  // Internal error state for form fields validation feedback if needed, 
-  // but user requested "popup" for errors. We will use AlertModal for that.
   const [error, setError] = useState('');
 
   const [bookedSlots, setBookedSlots] = useState([]);
   const [alertState, setAlertState] = useState({
     isOpen: false,
     message: '',
-    type: 'error' // 'error' or 'success'
+    type: 'error'
   });
 
   useEffect(() => {
@@ -28,7 +27,6 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
     setAlertState({ isOpen: false, message: '', type: 'error' });
     setError('');
 
-    // fetch facilities
     const fetchFacilities = async () => {
       try {
         const res = await api.get('/api/facilities');
@@ -40,7 +38,6 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
     fetchFacilities();
   }, [isOpen]);
 
-  // Prefill when modal opens
   useEffect(() => {
     if (!isOpen) return;
     if (facility) {
@@ -52,7 +49,6 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
         : (selectedDate || '').slice(0, 10);
       setFormData((prev) => ({ ...prev, date: dateStr }));
 
-      // Fetch booked slots
       if (facility && facility._id) {
         const fetchBooked = async () => {
           try {
@@ -69,8 +65,6 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
     if (initialEndTime) setFormData(prev => ({ ...prev, endTime: initialEndTime }));
   }, [isOpen, facility, selectedDate, initialStartTime, initialEndTime]);
 
-  if (!isOpen) return null;
-
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -81,7 +75,6 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
 
   const closeAlert = () => {
     setAlertState({ ...alertState, isOpen: false });
-    // If it was a success alert, also close the modal
     if (alertState.type === 'success') {
       onClose();
     }
@@ -98,8 +91,6 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
         return;
       }
 
-      // --- DATE VALIDATION (No Past Dates) ---
-      // We compare purely based on the date string to avoid timezone issues:
       const todayStr = new Date().toISOString().split('T')[0];
 
       if (date < todayStr) {
@@ -107,7 +98,6 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
         return;
       }
 
-      // --- TIME CONSTRUCTION & VALIDATION ---
       const start = new Date(`${date}T${startTime}`);
       const end = new Date(`${date}T${endTime}`);
 
@@ -115,7 +105,6 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
       const endHour = end.getHours();
       const endMin = end.getMinutes();
 
-      // 9 AM to 5 PM
       if (startHour < 9 || startHour >= 17) {
         showAlert('Facility is open from 9:00 AM to 5:00 PM.');
         return;
@@ -131,7 +120,6 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
         return;
       }
 
-      // --- OVERLAP CHECK ---
       const overlaps = bookedSlots.some(b => {
         const bs = new Date(b.start).getTime();
         const be = new Date(b.end).getTime();
@@ -159,13 +147,12 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
       console.error('Booking error', err);
       const msg = err.response?.data?.message || 'Booking failed';
       showAlert(`Error: ${msg}`);
-      setError(msg); // Also keep inline error for fallback
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  // Convert 24h "HH:mm" to 12h "h:mm AM/PM"
   const formatTime12h = (timeStr) => {
     if (!timeStr) return '';
     const [h, m] = timeStr.split(':');
@@ -176,13 +163,11 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
     return `${hour}:${m} ${ampm}`;
   };
 
-  // Generate slots from 09:00 to 17:00
   const generateTimeSlots = () => {
     const slots = [];
-    // 9 AM (9) to 5 PM (17)
     for (let h = 9; h <= 17; h++) {
       for (let m = 0; m < 60; m += 30) {
-        if (h === 17 && m > 0) break; // Don't go past 5:00 PM
+        if (h === 17 && m > 0) break;
         const hh = String(h).padStart(2, '0');
         const mm = String(m).padStart(2, '0');
         slots.push(`${hh}:${mm}`);
@@ -209,7 +194,7 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
 
     return timeSlots.filter(s => {
       const endMs = new Date(`${formData.date}T${s}`).getTime();
-      if (endMs <= startMs) return false; // End must be after start
+      if (endMs <= startMs) return false;
 
       const overlap = bookedSlots.some(b => {
         const bs = new Date(b.start).getTime();
@@ -222,126 +207,119 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="absolute inset-0 bg-white/70 backdrop-blur-md" onClick={onClose} />
-        <div className="relative bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg mx-4">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Book a Facility</h2>
+      <ModalWrapper isOpen={isOpen} onClose={onClose} title="Book a Facility" maxWidth="max-w-lg">
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-center">
+            {error}
+          </div>
+        )}
 
-          {/* Inline error fallback */}
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-center">
-              {error}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <select
+            name="facilityId"
+            value={formData.facilityId}
+            onChange={handleChange}
+            required
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select Facility *</option>
+            {facilities.map((f) => (
+              <option key={f._id} value={f._id}>{f.name}</option>
+            ))}
+          </select>
+
+          <input
+            name="date"
+            type="date"
+            value={formData.date}
+            onChange={handleChange}
+            required
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">Start Time</label>
+              <select
+                name="startTime"
+                value={formData.startTime}
+                onChange={handleChange}
+                required
+                className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select start</option>
+                {timeSlots.map(s => {
+                  const label = formatTime12h(s);
+                  const disabled = isSlotDisabled(s);
+                  return (
+                    <option key={s} value={s} disabled={disabled}>
+                      {label}{disabled ? ' (Booked)' : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">End Time</label>
+              <select
+                name="endTime"
+                value={formData.endTime}
+                onChange={handleChange}
+                required
+                className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select end</option>
+                {filteredEndSlots().map(s => (
+                  <option key={s} value={s}>{formatTime12h(s)}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {bookedSlots.length > 0 && (
+            <div className="bg-gray-50 border border-gray-200 p-3 rounded">
+              <h4 className="font-medium mb-2">Booked slots on selected date</h4>
+              <ul className="text-sm text-gray-700">
+                {bookedSlots.map((b) => (
+                  <li key={b._id}>
+                    {new Date(b.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })} -
+                    {new Date(b.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
+                    <span className="text-xs text-gray-500 ml-1">(by {b.user?.username || 'User'})</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <select
-              name="facilityId"
-              value={formData.facilityId}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <textarea
+            name="purpose"
+            placeholder="Purpose of booking (optional)"
+            value={formData.purpose}
+            onChange={handleChange}
+            rows={4}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          />
+
+          <div className="flex justify-end space-x-4 pt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium"
             >
-              <option value="">Select Facility *</option>
-              {facilities.map((f) => (
-                <option key={f._id} value={f._id}>{f.name}</option>
-              ))}
-            </select>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50"
+            >
+              {loading ? 'Booking...' : 'Confirm Booking'}
+            </button>
+          </div>
+        </form>
+      </ModalWrapper>
 
-            <input
-              name="date"
-              type="date"
-              value={formData.date}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col">
-                <label className="text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                <select
-                  name="startTime"
-                  value={formData.startTime}
-                  onChange={handleChange}
-                  required
-                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select start</option>
-                  {timeSlots.map(s => {
-                    const label = formatTime12h(s);
-                    const disabled = isSlotDisabled(s);
-                    return (
-                      <option key={s} value={s} disabled={disabled}>
-                        {label}{disabled ? ' (Booked)' : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-
-              <div className="flex flex-col">
-                <label className="text-sm font-medium text-gray-700 mb-1">End Time</label>
-                <select
-                  name="endTime"
-                  value={formData.endTime}
-                  onChange={handleChange}
-                  required
-                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select end</option>
-                  {filteredEndSlots().map(s => (
-                    <option key={s} value={s}>{formatTime12h(s)}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {bookedSlots.length > 0 && (
-              <div className="bg-gray-50 border border-gray-200 p-3 rounded">
-                <h4 className="font-medium mb-2">Booked slots on selected date</h4>
-                <ul className="text-sm text-gray-700">
-                  {bookedSlots.map((b) => (
-                    <li key={b._id}>
-                      {new Date(b.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })} -
-                      {new Date(b.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
-                      <span className="text-xs text-gray-500 ml-1">(by {b.user?.username || 'User'})</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <textarea
-              name="purpose"
-              placeholder="Purpose of booking (optional)"
-              value={formData.purpose}
-              onChange={handleChange}
-              rows={4}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            />
-
-            <div className="flex justify-end space-x-4 pt-6">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50"
-              >
-                {loading ? 'Booking...' : 'Confirm Booking'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      {/* Custom Alert Modal */}
       <AlertModal
         isOpen={alertState.isOpen}
         message={alertState.message}
