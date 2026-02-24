@@ -17,6 +17,9 @@ export const SocketProvider = ({ children }) => {
         if (user) {
             const newSocket = io('http://localhost:5000', {
                 withCredentials: true,
+                // Match server preference — connect via WebSocket directly,
+                // skipping the HTTP polling → upgrade round-trip
+                transports: ['websocket', 'polling'],
             });
 
             newSocket.on('connect', () => {

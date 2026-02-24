@@ -1,13 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { getCurrentUser } from '../utils/auth';
 
 function NotificationBell() {
+  const navigate = useNavigate();
+  const currentUser = getCurrentUser();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Rewrite any maintenance-requests URL to the correct page for the logged-in role
+  const resolveActionUrl = (url) => {
+    if (url === '/maintenance-requests' && currentUser?.role === 'technician') {
+      return '/technician/maintenance';
+    }
+    return url;
+  };
 
   useEffect(() => {
     fetchNotifications();
@@ -161,13 +172,13 @@ function NotificationBell() {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
-                        className={`p-4 cursor-pointer transition-colors ${
-                          notif.isRead ? 'bg-gray-50 hover:bg-gray-100' : 'bg-blue-50 hover:bg-blue-100'
-                        }`}
+                        className={`p-4 cursor-pointer transition-colors ${notif.isRead ? 'bg-gray-50 hover:bg-gray-100' : 'bg-blue-50 hover:bg-blue-100'
+                          }`}
                         onClick={() => {
                           if (!notif.isRead) handleMarkAsRead(notif._id);
+                          setIsOpen(false);
                           if (notif.actionUrl) {
-                            window.location.href = notif.actionUrl;
+                            navigate(resolveActionUrl(notif.actionUrl));
                           }
                         }}
                       >

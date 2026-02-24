@@ -95,9 +95,9 @@ function ViewEditRequestModal({ isOpen, onClose, requestId, onRequestUpdated }) 
     setLoading(true);
     setError('');
     try {
-      // Employees cannot update status, so remove it from the payload
+      // Employees and technicians cannot update status, so remove it from the payload
       const updateData = { ...formData };
-      if (user?.role === 'employee') {
+      if (user?.role === 'employee' || user?.role === 'technician') {
         delete updateData.status;
       }
 
@@ -118,7 +118,7 @@ function ViewEditRequestModal({ isOpen, onClose, requestId, onRequestUpdated }) 
   // if (!isOpen) return null; // ModalWrapper handles this
 
   const canEdit =
-    (user?.role === 'employee' &&
+    (['employee', 'technician'].includes(user?.role) &&
       formData.status === 'Pending' &&
       formData.submittedBy?._id === user?.id) ||
     ['manager', 'admin'].includes(user?.role);
@@ -145,7 +145,7 @@ function ViewEditRequestModal({ isOpen, onClose, requestId, onRequestUpdated }) 
               type="text"
               value={formData.title || ''}
               onChange={handleChange}
-              disabled={!isEditing || user?.role === 'technician'}
+              disabled={!isEditing}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             />
           </div>
@@ -159,7 +159,7 @@ function ViewEditRequestModal({ isOpen, onClose, requestId, onRequestUpdated }) 
               name="type"
               value={formData.type || ''}
               onChange={handleChange}
-              disabled={!isEditing || user?.role === 'technician'}
+              disabled={!isEditing}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             >
               <option value="Electrical">Electrical</option>
@@ -180,7 +180,7 @@ function ViewEditRequestModal({ isOpen, onClose, requestId, onRequestUpdated }) 
               name="priority"
               value={formData.priority || ''}
               onChange={handleChange}
-              disabled={!isEditing || user?.role === 'technician'}
+              disabled={!isEditing}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             >
               <option value="Low">Low</option>
@@ -200,7 +200,7 @@ function ViewEditRequestModal({ isOpen, onClose, requestId, onRequestUpdated }) 
               type="text"
               value={formData.location || ''}
               onChange={handleChange}
-              disabled={!isEditing || user?.role === 'technician'}
+              disabled={!isEditing}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             />
           </div>
@@ -215,7 +215,7 @@ function ViewEditRequestModal({ isOpen, onClose, requestId, onRequestUpdated }) 
               value={formData.description || ''}
               onChange={handleChange}
               rows={4}
-              disabled={!isEditing || user?.role === 'technician'}
+              disabled={!isEditing}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 resize-none"
             />
           </div>

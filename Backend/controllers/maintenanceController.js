@@ -32,24 +32,23 @@ exports.createRequest = async (req, res) => {
     // 2. Save to database
     await request.save();
 
-    // 3. Send Notifications
-    // Find all store managers and admins to notify them
-    const adminAndManagerIds = await notificationService.getUsersByRole(['admin', 'manager']);
-    const submittedUser = await User.findById(req.user.id).select('firstName lastName');
-
-    if (adminAndManagerIds.length > 0) {
-      // Create notification message
-      const notificationData = notificationService.requestCreatedNotification(
-        request._id,
-        request.title,
-        submittedUser.firstName || submittedUser.username || 'User'
-      );
-
-      // Send notification (saved to DB and/or real-time)
-      await notificationService.notifyMultiple(adminAndManagerIds, notificationData);
-    }
-
+    // 3. Respond immediately — notifications run in the background
     res.status(201).json({ success: true, data: request });
+
+    // 4. Fire-and-forget: send notifications without blocking the response
+    Promise.all([
+      User.findById(req.user.id).select('firstName lastName'),
+      notificationService.getUsersByRole(['admin', 'manager'])
+    ]).then(([submittedUser, adminAndManagerIds]) => {
+      if (adminAndManagerIds.length > 0) {
+        const notificationData = notificationService.requestCreatedNotification(
+          request._id,
+          request.title,
+          submittedUser?.firstName || submittedUser?.username || 'User'
+        );
+        notificationService.notifyMultiple(adminAndManagerIds, notificationData).catch(console.error);
+      }
+    }).catch(console.error);
   } catch (err) {
     handleError(res, err);
   }
@@ -161,39 +160,37 @@ exports.updateStatus = async (req, res) => {
     request.status = req.body.status;
     await request.save();
 
-    // Emit Socket Event
+    // Emit socket event immediately (no DB lookup needed)
     try {
       getSocketIO().emit('request_updated', request);
     } catch (e) {
       console.error('Socket emit error:', e.message);
     }
 
-    // Send notifications when status changes to "Completed"
+    // Respond immediately — DB notification writes run in the background
+    res.json({ success: true, data: request });
+
+    // Fire-and-forget: send notifications without blocking the response
     if (req.body.status === 'Completed') {
-      const adminAndManagerIds = await notificationService.getUsersByRole(['admin', 'manager']);
       const completionNotification = notificationService.requestCompletedNotification(
         request._id,
         request.title
       );
-
-      // Notify user
-      await notificationService.notify(request.submittedBy._id, completionNotification);
-
-      // Notify admin and managers
-      if (adminAndManagerIds.length > 0) {
-        await notificationService.notifyMultiple(adminAndManagerIds, completionNotification);
-      }
+      // Notify user + admins/managers in parallel
+      Promise.all([
+        notificationService.notify(request.submittedBy._id, completionNotification),
+        notificationService.getUsersByRole(['admin', 'manager']).then(ids =>
+          ids.length > 0 ? notificationService.notifyMultiple(ids, completionNotification) : null
+        )
+      ]).catch(console.error);
     } else if (oldStatus !== req.body.status) {
-      // Notify user about status change
       const statusChangeNotification = notificationService.requestStatusChangedNotification(
         request._id,
         request.title,
         req.body.status
       );
-      await notificationService.notify(request.submittedBy._id, statusChangeNotification);
+      notificationService.notify(request.submittedBy._id, statusChangeNotification).catch(console.error);
     }
-
-    res.json({ success: true, data: request });
   } catch (err) {
     handleError(res, err);
   }
@@ -225,37 +222,34 @@ exports.assignTechnician = async (req, res) => {
     request.status = 'In Progress';
     await request.save();
 
-    // Emit Socket Event
+    // Emit socket event immediately
     try {
       getSocketIO().emit('request_updated', request);
     } catch (e) {
       console.error('Socket emit error:', e.message);
     }
 
-    // Get technician details for notification
-    const technician = await User.findById(technicianId).select('firstName lastName username');
-
-    // Notify technician about assignment
-    const techNotificationData = notificationService.requestAssignedToTechnicianNotification(
-      request._id,
-      request.title,
-      technician.firstName || technician.username
-    );
-    await notificationService.notify(technicianId, techNotificationData);
-
-    // Notify user about technician assignment
-    const userNotificationData = notificationService.requestAssignedNotificationToUser(
-      request._id,
-      request.title,
-      technician.firstName || technician.username
-    );
-    await notificationService.notify(request.submittedBy, userNotificationData);
-
     const populatedRequest = await populateRequest(
       MaintenanceRequest.findById(request._id)
     );
 
+    // Respond immediately — notifications run in the background
     res.json({ success: true, data: populatedRequest });
+
+    // Fire-and-forget: fetch technician details and send both notifications in parallel
+    User.findById(technicianId).select('firstName lastName username').then(technician => {
+      const name = technician?.firstName || technician?.username || 'Technician';
+      Promise.all([
+        notificationService.notify(
+          technicianId,
+          notificationService.requestAssignedToTechnicianNotification(request._id, request.title, name)
+        ),
+        notificationService.notify(
+          request.submittedBy,
+          notificationService.requestAssignedNotificationToUser(request._id, request.title, name)
+        )
+      ]).catch(console.error);
+    }).catch(console.error);
   } catch (err) {
     handleError(res, err);
   }

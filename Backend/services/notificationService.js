@@ -8,6 +8,16 @@ const notificationService = {
   // Create notification for single user
   async notify(recipientId, data) {
     try {
+      // Role-aware actionUrl: technicians have no /maintenance-requests page,
+      // so redirect them to their own tasks page instead.
+      let actionUrl = data.actionUrl;
+      if (actionUrl === '/maintenance-requests') {
+        const recipient = await User.findById(recipientId).select('role').lean();
+        if (recipient?.role === 'technician') {
+          actionUrl = '/technician/maintenance';
+        }
+      }
+
       const notification = new Notification({
         recipient: recipientId,
         type: data.type,
@@ -17,20 +27,20 @@ const notificationService = {
         relatedBooking: data.relatedBooking,
         relatedFacility: data.relatedFacility,
         relatedUser: data.relatedUser,
-        actionUrl: data.actionUrl
+        actionUrl
       });
 
-      await notification.save();
-      console.log(`Notification created for user ${recipientId}`);
-
-      // Emit real-time notification
+      // 🚀 Emit socket FIRST — client gets the notification instantly
       try {
         const io = getSocketIO();
         io.to(recipientId.toString()).emit('new_notification', notification);
       } catch (e) {
-        // Socket might not be init or other error, don't fail the request
         console.log('Socket emit failed', e.message);
       }
+
+      // Persist to DB in the background (non-blocking)
+      notification.save().catch(err => console.error('Notification DB save failed:', err));
+      console.log(`Notification emitted for user ${recipientId} → ${actionUrl}`);
 
       return notification;
     } catch (err) {
@@ -54,21 +64,22 @@ const notificationService = {
         actionUrl: data.actionUrl
       }));
 
-      const result = await Notification.insertMany(notificationsData);
-      console.log(`Notifications created for ${recipientIds.length} users`);
-
-      // Emit real-time notifications
+      // 🚀 Emit socket events FIRST — all recipients get notified instantly
       try {
         const io = getSocketIO();
-        // result is array of saved documents
-        result.forEach(notification => {
-          io.to(notification.recipient.toString()).emit('new_notification', notification);
+        notificationsData.forEach(n => {
+          io.to(n.recipient.toString()).emit('new_notification', n);
         });
       } catch (e) {
         console.log('Socket emit failed', e.message);
       }
 
-      return result;
+      // Persist to DB in the background (non-blocking)
+      Notification.insertMany(notificationsData)
+        .then(() => console.log(`Notifications saved for ${recipientIds.length} users`))
+        .catch(err => console.error('Notification batch save failed:', err));
+
+      return notificationsData;
     } catch (err) {
       console.error('Error creating notifications:', err);
       throw err;

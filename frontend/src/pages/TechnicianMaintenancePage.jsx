@@ -92,20 +92,29 @@ function TechnicianMaintenancePage() {
     setIsConfirmModalOpen(true);
   };
 
-  const handleConfirmCompletion = async () => {
+  const handleConfirmCompletion = () => {
     if (!taskToCompleteId) return;
 
-    try {
-      await api.patch(`/api/maintenance/requests/${taskToCompleteId}/status`, {
-        status: 'Completed'
+    const id = taskToCompleteId;
+
+    // Optimistic update — close modal and flip card status instantly
+    setIsConfirmModalOpen(false);
+    setTaskToCompleteId(null);
+    setAssignedRequests(prev =>
+      prev.map(r => r._id === id ? { ...r, status: 'Completed' } : r)
+    );
+    showToast('Task marked as completed!', 'success');
+
+    // PATCH runs in the background — rollback on failure
+    api.patch(`/api/maintenance/requests/${id}/status`, { status: 'Completed' })
+      .then(() => fetchAll())  // sync with server state after success
+      .catch(err => {
+        // Rollback the optimistic status change
+        setAssignedRequests(prev =>
+          prev.map(r => r._id === id ? { ...r, status: 'In Progress' } : r)
+        );
+        showToast('Failed to mark task as completed: ' + (err.response?.data?.message || err.message), 'error');
       });
-      showToast('Task marked as completed!', 'success');
-      fetchAll();
-    } catch (err) {
-      showToast('Failed to mark task as completed: ' + (err.response?.data?.message || err.message), 'error');
-    } finally {
-      setTaskToCompleteId(null);
-    }
   };
 
   return (

@@ -8,6 +8,15 @@ const initSocket = (httpServer) => {
             origin: "http://localhost:5173", // Allow frontend to connect
             methods: ["GET", "POST"],
             credentials: true
+        },
+        // Prefer WebSocket from the start — avoids the polling→upgrade round-trip delay
+        transports: ['websocket', 'polling'],
+        // Faster heartbeat: detect dead connections quickly so rooms stay clean
+        pingInterval: 10000,  // check every 10s (default: 25s)
+        pingTimeout: 5000,    // consider dead after 5s no pong (default: 20s)
+        // Compress payloads only when they're large enough to benefit
+        perMessageDeflate: {
+            threshold: 512  // only compress messages larger than 512 bytes
         }
     });
 
