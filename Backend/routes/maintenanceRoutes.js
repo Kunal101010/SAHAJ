@@ -15,7 +15,7 @@ const requestValidation = [
   body('description').trim().notEmpty().withMessage('Description is required'),
 ];
 
-router.post('/requests', protect, authorize('employee', 'manager', 'admin'), requestValidation, createRequest);
+router.post('/requests', protect, authorize('employee', 'technician', 'manager', 'admin'), requestValidation, createRequest);
 router.get('/requests/all', protect, authorize('admin', 'manager'), getAllRequests);
 router.get('/requests/assigned', protect, authorize('technician'), getAssignedRequests);
 router.get('/technicians', protect, authorize('manager', 'admin'), async (req, res) => {
