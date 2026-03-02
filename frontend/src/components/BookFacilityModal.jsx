@@ -214,66 +214,117 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <select
-            name="facilityId"
-            value={formData.facilityId}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select Facility *</option>
-            {facilities.map((f) => (
-              <option key={f._id} value={f._id}>{f.name}</option>
-            ))}
-          </select>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Facility Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Select Facility *</label>
+            <select
+              name="facilityId"
+              value={formData.facilityId}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Choose a facility...</option>
+              {facilities.map((f) => (
+                <option key={f._id} value={f._id}>{f.name}</option>
+              ))}
+            </select>
+          </div>
 
-          <input
-            name="date"
-            type="date"
-            value={formData.date}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          {/* Selected Facility Details */}
+          {formData.facilityId && (() => {
+            const selectedFacility = facilities.find(f => f._id === formData.facilityId);
+            return selectedFacility ? (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-800 text-lg mb-2">{selectedFacility.name}</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
+                        </svg>
+                        <span className="font-medium">Capacity:</span> {selectedFacility.capacity} people
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/>
+                        </svg>
+                        <span className="font-medium">Location:</span> {selectedFacility.location}
+                      </div>
+                    </div>
+                    {selectedFacility.description && (
+                      <div className="mt-3 pt-3 border-t border-blue-100">
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          <span className="font-medium text-gray-800">About this facility:</span><br/>
+                          {selectedFacility.description.length > 100 
+                            ? selectedFacility.description.slice(0, 100) + '...'
+                            : selectedFacility.description
+                          }
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null;
+          })()}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col">
-              <label className="text-sm font-medium text-gray-700 mb-1">Start Time</label>
-              <select
-                name="startTime"
-                value={formData.startTime}
-                onChange={handleChange}
-                required
-                className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select start</option>
-                {timeSlots.map(s => {
-                  const label = formatTime12h(s);
-                  const disabled = isSlotDisabled(s);
-                  return (
-                    <option key={s} value={s} disabled={disabled}>
-                      {label}{disabled ? ' (Booked)' : ''}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
+          {/* Date Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Booking Date *</label>
+            <input
+              name="date"
+              type="date"
+              value={formData.date}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-            <div className="flex flex-col">
-              <label className="text-sm font-medium text-gray-700 mb-1">End Time</label>
-              <select
-                name="endTime"
-                value={formData.endTime}
-                onChange={handleChange}
-                required
-                className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select end</option>
-                {filteredEndSlots().map(s => (
-                  <option key={s} value={s}>{formatTime12h(s)}</option>
-                ))}
-              </select>
+          {/* Time Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Time Slot *</label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1">Start Time</label>
+                <select
+                  name="startTime"
+                  value={formData.startTime}
+                  onChange={handleChange}
+                  required
+                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select start</option>
+                  {timeSlots.map(s => {
+                    const label = formatTime12h(s);
+                    const disabled = isSlotDisabled(s);
+                    return (
+                      <option key={s} value={s} disabled={disabled}>
+                        {label}{disabled ? ' (Booked)' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1">End Time</label>
+                <select
+                  name="endTime"
+                  value={formData.endTime}
+                  onChange={handleChange}
+                  required
+                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select end</option>
+                  {filteredEndSlots().map(s => (
+                    <option key={s} value={s}>{formatTime12h(s)}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -292,29 +343,44 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
             </div>
           )}
 
-          <textarea
-            name="purpose"
-            placeholder="Purpose of booking (optional)"
-            value={formData.purpose}
-            onChange={handleChange}
-            rows={4}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-          />
+          {/* Purpose of Booking */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Purpose of Booking</label>
+            <textarea
+              name="purpose"
+              placeholder="Describe the purpose of your booking (optional)..."
+              value={formData.purpose}
+              onChange={handleChange}
+              rows={3}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+            <p className="text-xs text-gray-500 mt-1">Help us understand how you'll be using this facility</p>
+          </div>
 
-          <div className="flex justify-end space-x-4 pt-6">
+          <div className="flex justify-end space-x-4 pt-6 border-t border-gray-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium"
+              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium border border-gray-300"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50"
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
             >
-              {loading ? 'Booking...' : 'Confirm Booking'}
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  Booking...
+                </span>
+              ) : (
+                'Confirm Booking'
+              )}
             </button>
           </div>
         </form>

@@ -302,3 +302,120 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ success: false, message: 'Error resetting password. Please try again.' });
   }
 };
+
+// ─── OTP Login ───────────────────────────────────────────────────────────────
+
+// Step 1: Validate credentials → send OTP to email
+exports.requestLoginOtp = async (req, res) => {
+  const { emailOrUsername, password } = req.body;
+
+  if (!emailOrUsername || !password) {
+    return res.status(400).json({ success: false, message: 'Email/username and password are required' });
+  }
+
+  try {
+    // 1. Find user
+    const user = await User.findOne({
+      $or: [{ email: emailOrUsername }, { username: emailOrUsername }]
+    }).select('+password +loginOtp +loginOtpExpiry');
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({ success: false, message: 'Account is deactivated' });
+    }
+
+    // 2. Verify password first
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    // 3. Check if user is admin - bypass OTP for admin users
+    if (user.role === 'admin') {
+      const token = generateToken(user._id, user.role);
+      return res.json({
+        success: true,
+        message: 'Login successful',
+        token,
+        user: formatUserResponse(user),
+        bypassOtp: true
+      });
+    }
+
+    // 4. Generate 6-digit OTP, hash it, store with 10-min expiry
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.loginOtp = crypto.createHash('sha256').update(otp).digest('hex');
+    user.loginOtpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    // 5. Email the plain OTP
+    await sendEmail({
+      email: user.email,
+      subject: 'Your Login OTP - Sahaj FMS',
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
+          <div style="background:linear-gradient(135deg,#2563eb,#7c3aed);padding:28px;text-align:center">
+            <h1 style="color:#fff;margin:0;font-size:22px">Sahaj FMS</h1>
+            <p style="color:#bfdbfe;margin:4px 0 0">Login Verification</p>
+          </div>
+          <div style="padding:32px">
+            <p style="color:#374151">Hello <strong>${user.firstName || user.username}</strong>,</p>
+            <p style="color:#374151">Use the OTP below to complete your login. It expires in <strong>10 minutes</strong>.</p>
+            <div style="background:#f1f5f9;border-radius:10px;padding:24px;text-align:center;margin:24px 0">
+              <span style="font-size:38px;font-weight:700;letter-spacing:12px;color:#1e40af">${otp}</span>
+            </div>
+            <p style="color:#6b7280;font-size:13px">If you did not attempt to log in, please ignore this email or contact support immediately.</p>
+          </div>
+        </div>
+      `
+    });
+
+    res.json({ success: true, message: 'OTP sent to your registered email' });
+  } catch (err) {
+    console.error('RequestLoginOtp error:', err);
+    res.status(500).json({ success: false, message: 'Error sending OTP. Please try again.' });
+  }
+};
+
+// Step 2: Verify OTP → issue JWT
+exports.verifyLoginOtp = async (req, res) => {
+  const { emailOrUsername, otp } = req.body;
+
+  if (!emailOrUsername || !otp) {
+    return res.status(400).json({ success: false, message: 'Email/username and OTP are required' });
+  }
+
+  try {
+    const otpHash = crypto.createHash('sha256').update(otp.trim()).digest('hex');
+
+    const user = await User.findOne({
+      $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
+      loginOtp: otpHash,
+      loginOtpExpiry: { $gt: new Date() }
+    }).select('+loginOtp +loginOtpExpiry');
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    // Clear OTP fields
+    user.loginOtp = undefined;
+    user.loginOtpExpiry = undefined;
+    await user.save();
+
+    const token = generateToken(user._id, user.role);
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      token,
+      user: formatUserResponse(user)
+    });
+  } catch (err) {
+    console.error('VerifyLoginOtp error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

@@ -22,7 +22,14 @@ const facilitySchema = new mongoose.Schema({
   description: {
     type: String,
     trim: true,
-    maxlength: [200, 'Description cannot exceed 200 characters']
+    validate: {
+      validator: function(v) {
+        if (!v) return true; // Description is optional
+        const wordCount = v.trim().split(/\s+/).filter(word => word.length > 0).length;
+        return wordCount <= 200;
+      },
+      message: 'Description cannot exceed 200 words'
+    }
   },
   isActive: {
     type: Boolean,

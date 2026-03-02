@@ -8,6 +8,56 @@ import Toast from '../components/Toast';
 import api from '../services/api'; // Import API service
 import { useMemo } from 'react';
 
+// Facility Description Component
+function FacilityDescription({ description }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  if (!description) {
+    return (
+      <div className="text-sm text-gray-500 italic">
+        No description available for this facility.
+      </div>
+    );
+  }
+
+  const words = description.split(' ');
+  const shouldTruncate = words.length > 30;
+  const displayText = isExpanded || !shouldTruncate 
+    ? description 
+    : words.slice(0, 30).join(' ') + '...';
+
+  return (
+    <div className="space-y-2">
+      <div className="text-sm text-gray-700 leading-relaxed">
+        <span className="font-medium text-gray-800 mb-1 block">About this facility:</span>
+        <p>{displayText}</p>
+      </div>
+      {shouldTruncate && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors duration-200 flex items-center gap-1"
+        >
+          {isExpanded ? (
+            <>
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd"/>
+              </svg>
+              Show less
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/>
+              </svg>
+              Read more ({words.length - 30} more words)
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function FacilityBookingPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(getCurrentUser());
@@ -311,26 +361,62 @@ function FacilityBookingPage() {
             {!loading && !error && facilities.map((facility) => (
               <div
                 key={facility._id || facility.id}
-                className="bg-white p-6 rounded-2xl shadow hover:shadow-xl transition"
+                className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100"
               >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-800">{facility.name}</h4>
-                    <p className="text-sm text-gray-600">Capacity: {facility.capacity} people</p>
-                    {facility.bookingsToday !== undefined && (
-                      <p className="text-sm text-gray-500 mt-1">{facility.bookingsToday} bookings on selected date</p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => openModal(facility)}
-                    disabled={!selectedDate}
-                    className={`px-6 py-3 rounded-lg font-medium transition ${selectedDate
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                <div className="space-y-4">
+                  {/* Header */}
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h4 className="text-xl font-semibold text-gray-800 mb-2">{facility.name}</h4>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
+                          </svg>
+                          Capacity: {facility.capacity} people
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/>
+                          </svg>
+                          {facility.location}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => openModal(facility)}
+                      disabled={!selectedDate}
+                      className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
+                        selectedDate
+                          ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md transform hover:-translate-y-0.5'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
-                  >
-                    Book Now
-                  </button>
+                    >
+                      Book Now
+                    </button>
+                  </div>
+
+                  {/* Description Section */}
+                  <div className="border-t border-gray-100 pt-4">
+                    <FacilityDescription description={facility.description} />
+                  </div>
+
+                  {/* Booking Status */}
+                  {facility.bookingsToday !== undefined && (
+                    <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                      <span className="text-sm text-gray-600">
+                        <svg className="w-4 h-4 inline mr-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"/>
+                        </svg>
+                        {facility.bookingsToday} booking{facility.bookingsToday !== 1 ? 's' : ''} on selected date
+                      </span>
+                      {facility.bookingsToday > 0 && (
+                        <span className="text-xs text-orange-600 font-medium">
+                          Limited availability
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

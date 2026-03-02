@@ -11,9 +11,47 @@ import BarChartComponent from '../components/BarChartComponent';
 import PieChartComponent from '../components/PieChartComponent';
 import RecentActivityTable from '../components/RecentActivityTable';
 
+// Loading Skeleton Components
+const StatCardSkeleton = () => (
+  <div className="bg-white p-6 rounded-xl shadow-lg animate-pulse">
+    <div className="flex items-center justify-between">
+      <div>
+        <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+        <div className="h-8 bg-gray-200 rounded w-12"></div>
+      </div>
+      <div className="h-12 w-12 bg-gray-200 rounded-full"></div>
+    </div>
+  </div>
+);
+
+const ChartSkeleton = () => (
+  <div className="bg-white p-6 rounded-xl shadow-lg animate-pulse">
+    <div className="h-4 bg-gray-200 rounded w-32 mb-4"></div>
+    <div className="h-64 bg-gray-200 rounded"></div>
+  </div>
+);
+
+const TableSkeleton = () => (
+  <div className="bg-white p-6 rounded-xl shadow-lg animate-pulse">
+    <div className="h-4 bg-gray-200 rounded w-40 mb-4"></div>
+    <div className="space-y-3">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="flex items-center space-x-4">
+          <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+          <div className="flex-1 space-y-2">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 function DashboardPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(getCurrentUser());
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, completed: 0 });
   const [categoryData, setCategoryData] = useState([]);
@@ -54,6 +92,11 @@ function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
+      // Don't show skeleton on real-time updates, only on initial load
+      if (initialLoading) {
+        setInitialLoading(true);
+      }
+      
       // Fetch all required data in parallel for better performance
       const [statsRes, categoryRes, statusRes, recentRes] = await Promise.all([
         api.get('/api/maintenance/stats'),              // Count of Total, Pending, etc.
@@ -75,6 +118,8 @@ function DashboardPage() {
       setRecent(recentRes.data.data);
     } catch (err) {
       console.error('Failed to fetch dashboard data', err);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -84,19 +129,44 @@ function DashboardPage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <StatCard title="Total Requests" value={stats.total} />
-        <StatCard title="Pending" value={stats.pending} />
-        <StatCard title="In Progress" value={stats.inProgress} />
-        <StatCard title="Completed" value={stats.completed} />
+        {initialLoading ? (
+          <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </>
+        ) : (
+          <>
+            <StatCard title="Total Requests" value={stats.total} />
+            <StatCard title="Pending" value={stats.pending} />
+            <StatCard title="In Progress" value={stats.inProgress} />
+            <StatCard title="Completed" value={stats.completed} />
+          </>
+        )}
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-2 gap-6 mb-6">
-        <BarChartComponent data={categoryData} />
-        <PieChartComponent data={statusData} />
+        {initialLoading ? (
+          <>
+            <ChartSkeleton />
+            <ChartSkeleton />
+          </>
+        ) : (
+          <>
+            <BarChartComponent data={categoryData} />
+            <PieChartComponent data={statusData} />
+          </>
+        )}
       </div>
 
-      <RecentActivityTable data={recent} />
+      {/* Recent Activity */}
+      {initialLoading ? (
+        <TableSkeleton />
+      ) : (
+        <RecentActivityTable data={recent} />
+      )}
     </div>
   );
 }

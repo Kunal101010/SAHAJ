@@ -1,7 +1,7 @@
 // routes/authRoutes.js
 
 const express = require('express');
-const { signup, login, getMe, logout, updateProfile, changePassword, forgotPassword, resetPassword } = require('../controllers/authController');
+const { signup, login, getMe, logout, updateProfile, changePassword, forgotPassword, resetPassword, requestLoginOtp, verifyLoginOtp } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const { body } = require('express-validator');
 
@@ -68,5 +68,11 @@ router.post('/forgot-password', forgotPassword);
 
 // POST /api/auth/reset-password - Verify OTP & Reset
 router.post('/reset-password', resetPassword);
+
+// POST /api/auth/login/request-otp - Step 1: validate credentials, send OTP
+router.post('/login/request-otp', requestLoginOtp);
+
+// POST /api/auth/login/verify-otp  - Step 2: verify OTP, receive JWT
+router.post('/login/verify-otp', verifyLoginOtp);
 
 module.exports = router;

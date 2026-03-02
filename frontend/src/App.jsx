@@ -19,6 +19,10 @@ import TechnicianAssignmentsPage from './pages/TechnicianAssignmentsPage';
 import NotificationsPage from './pages/NotificationsPage';
 import ReportsAnalyticsPage from './pages/ReportsAnalyticsPage';
 
+import { SocketProvider } from './context/SocketContext';
+import { ToastProvider } from './context/ToastContext';
+import { DarkModeProvider } from './context/DarkModeContext';
+
 function AnimatedRoutes() {
   const location = useLocation();
 
@@ -69,17 +73,16 @@ function AnimatedRoutes() {
   );
 }
 
-import { SocketProvider } from './context/SocketContext';
-import { ToastProvider } from './context/ToastContext';
-
 function App() {
   return (
     <Router>
-      <SocketProvider>
-        <ToastProvider>
-          <AnimatedRoutes />
-        </ToastProvider>
-      </SocketProvider>
+      <DarkModeProvider>
+        <SocketProvider>
+          <ToastProvider>
+            <AnimatedRoutes />
+          </ToastProvider>
+        </SocketProvider>
+      </DarkModeProvider>
     </Router>
   );
 }

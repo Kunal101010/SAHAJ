@@ -1,4 +1,3 @@
-// src/pages/MaintenanceRequestsPage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../utils/auth';
@@ -8,6 +7,7 @@ import api from '../services/api';
 import NewRequestModal from '../components/NewRequestModal';
 import ViewEditRequestModal from '../components/ViewEditRequestModal';
 import Toast from '../components/Toast';
+import EmptyState from '../components/EmptyState';
 
 import { useSocket } from '../context/SocketContext';
 
@@ -129,13 +129,22 @@ function MaintenanceRequestsPage() {
             <p className="text-gray-600 text-xl">Loading requests...</p>
           </div>
         ) : filteredRequests.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl shadow-lg">
-            <p className="text-gray-500 text-xl">
-              {search ? 'No matching requests found.' : 'You have no requests yet.'}
-            </p>
-            <p className="text-gray-400 mt-4">
-              Click "Submit New Request" to get started!
-            </p>
+          <div className="bg-white rounded-2xl shadow-lg">
+            <EmptyState
+              icon={
+                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              }
+              title={search ? 'No matching requests found' : 'No maintenance requests yet'}
+              description={
+                search 
+                  ? 'Try adjusting your search terms or filters to find what you\'re looking for.'
+                  : 'Get started by creating your first maintenance request to keep your facility running smoothly.'
+              }
+              actionText="Submit New Request"
+              onAction={() => setIsModalOpen(true)}
+            />
           </div>
         ) : (
           <div className="space-y-6">
