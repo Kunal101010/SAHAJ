@@ -74,13 +74,42 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-// Get bookings for current user
+// Get bookings for current user (employee view)
 exports.getMyBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find({ user: req.user._id }).populate('facility').sort('-start');
-    res.json({ success: true, bookings });
+    console.log('getMyBookings called by user:', req.user.role, req.user._id);
+    const bookings = await Booking.find({ user: req.user._id })
+      .populate('facility', 'name capacity location')
+      .populate('user', 'username firstName lastName')
+      .sort({ start: -1 })
+      .lean(); // Use lean for performance and ensure virtuals work
+    
+    console.log('Found user bookings count:', bookings.length);
+    console.log('User bookings:', bookings);
+    
+    res.json({ success: true, data: bookings });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Get all bookings (admin/manager view)
+exports.getAllBookings = async (req, res) => {
+  try {
+    console.log('getAllBookings called by user:', req.user.role, req.user._id);
+    const bookings = await Booking.find()
+      .populate('user', 'username firstName lastName')
+      .populate('facility', 'name capacity location')
+      .sort({ start: -1 })
+      .lean();
+
+    console.log('Found bookings count:', bookings.length);
+    console.log('Bookings:', bookings);
+
+    res.json({ success: true, data: bookings });
+  } catch (err) {
+    console.error('getAllBookings error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -91,11 +120,15 @@ exports.getFacilityBookings = async (req, res) => {
     const { facilityId } = req.params;
     const { date } = req.query; // optional YYYY-MM-DD
 
+    console.log('getFacilityBookings called with:', { facilityId, date });
+
     let filter = { facility: facilityId };
 
     if (date) {
       const startOfDay = new Date(date + 'T00:00:00.000Z');
       const endOfDay = new Date(date + 'T23:59:59.999Z');
+
+      console.log('Date range:', { startOfDay, endOfDay });
 
       // find bookings that overlap the day: booking.start < endOfDay && booking.end > startOfDay
       filter = {
@@ -105,10 +138,14 @@ exports.getFacilityBookings = async (req, res) => {
       };
     }
 
-    // only return booked (not cancelled)
-    filter = { ...filter, status: 'Booked' };
+    // only return booked (not cancelled) - include both Booked and confirmed
+    filter = { ...filter, status: { $in: ['Booked', 'confirmed'] } };
+
+    console.log('Final filter:', filter);
 
     const bookings = await Booking.find(filter).populate('user').sort('start');
+    console.log('Found bookings:', bookings);
+
     res.json({ success: true, bookings });
   } catch (err) {
     console.error(err);
@@ -138,30 +175,160 @@ exports.getBookingsByDate = async (req, res) => {
   }
 };
 
-// Cancel booking (user can cancel their own)
-exports.cancelBooking = async (req, res) => {
+// Update booking (admin/manager only)
+exports.updateBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-
-    // Only owner or admin can cancel
-    if (booking.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Not authorized to cancel this booking' });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    booking.status = 'Cancelled';
+    // Only admin or manager can update bookings
+    if (!['admin', 'manager'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Not authorized to update bookings' });
+    }
+
+    const { facility, start, end, purpose } = req.body;
+
+    // Validate new dates
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    if (startDate >= endDate) {
+      return res.status(400).json({ success: false, message: 'End time must be after start time' });
+    }
+
+    // Check for overlapping bookings (exclude current booking)
+    const overlap = await Booking.findOne({
+      _id: { $ne: req.params.id },
+      facility: facility || booking.facility,
+      status: { $in: ['confirmed', 'Booked'] },
+      $or: [
+        { start: { $lt: endDate }, end: { $gt: startDate } }
+      ]
+    });
+
+    if (overlap) {
+      return res.status(409).json({ success: false, message: 'Facility already booked for selected time' });
+    }
+
+    // Update booking fields
+    if (facility) booking.facility = facility;
+    if (start) booking.start = startDate;
+    if (end) booking.end = endDate;
+    if (purpose !== undefined) booking.purpose = purpose;
+    
+    // Update date string if date changed
+    if (start) {
+      booking.date = startDate.toISOString().slice(0, 10);
+    }
+
     await booking.save();
 
-    // Emit Socket Event
+    // Emit Socket Event for real-time updates
     try {
-      getSocketIO().emit('booking_cancelled', { bookingId: booking._id, facilityId: booking.facility });
+      const { getSocketIO } = require('../utils/socket');
+      const io = getSocketIO();
+      if (io) {
+        io.emit('booking_updated', { 
+          bookingId: booking._id, 
+          facilityId: booking.facility,
+          updatedBy: req.user.username,
+          booking: booking
+        });
+      }
     } catch (e) {
       console.error('Socket emit error:', e.message);
     }
 
-    res.json({ success: true, booking });
+    res.json({ 
+      success: true, 
+      message: 'Booking updated successfully',
+      booking 
+    });
   } catch (err) {
-    console.error(err);
+    console.error('Update booking error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Cancel booking with role-based permissions
+exports.cancelBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('user', 'username firstName lastName')
+      .populate('facility', 'name');
+    
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // Check if booking is in the past
+    const now = new Date();
+    const bookingStartTime = new Date(booking.start);
+    if (bookingStartTime <= now) {
+      return res.status(400).json({ success: false, message: 'Cannot cancel past bookings' });
+    }
+
+    // Role-based permission check
+    const userRole = req.user.role;
+    const isOwner = booking.user._id.toString() === req.user._id.toString();
+    
+    // Employees can only cancel their own bookings
+    // Admins and managers can cancel any upcoming booking
+    if (userRole === 'employee' && !isOwner) {
+      return res.status(403).json({ success: false, message: 'You can only cancel your own bookings' });
+    }
+    
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return res.status(403).json({ success: false, message: 'Not authorized to cancel bookings' });
+    }
+
+    // Update booking status
+    booking.status = 'cancelled';
+    await booking.save();
+
+    // Emit Socket Event for real-time updates
+    try {
+      const { getSocketIO } = require('../utils/socket');
+      const io = getSocketIO();
+      if (io) {
+        io.emit('booking_cancelled', { 
+          bookingId: booking._id, 
+          facilityId: booking.facility._id,
+          cancelledBy: req.user.username,
+          booking: booking
+        });
+      }
+    } catch (e) {
+      console.error('Socket emit error:', e.message);
+    }
+
+    // Send notification to booking user if cancelled by admin/manager
+    if (!isOwner && userRole !== 'employee') {
+      try {
+        const notificationService = require('../services/notificationService');
+        const cancelNotification = notificationService.bookingCancelledNotification(
+          booking._id,
+          booking.facility.name,
+          booking.start.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          })
+        );
+        await notificationService.notifySingle(booking.user._id, cancelNotification);
+      } catch (notifErr) {
+        console.error('Failed to send cancellation notification:', notifErr);
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Booking cancelled successfully',
+      booking 
+    });
+  } catch (err) {
+    console.error('Cancel booking error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

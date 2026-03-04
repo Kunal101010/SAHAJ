@@ -1,100 +1,113 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../utils/auth';
 import api from '../services/api';
-import { useToast } from '../context/ToastContext';
 import { useSocket } from '../context/SocketContext';
 import EmptyState from '../components/EmptyState';
+import { useToast } from '../context/ToastContext';
 
-function ManagerBookingsPage() {
-  const navigate = useNavigate();
+function BookingOverviewPage() {
+  const currentUser = getCurrentUser();
   const socket = useSocket();
   const { showToast } = useToast();
-  const [user, setUser] = useState(getCurrentUser());
+  
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [facilityFilter, setFacilityFilter] = useState('all');
-  const [facilities, setFacilities] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
   const [cancellingId, setCancellingId] = useState(null);
   const [editingBooking, setEditingBooking] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [facilities, setFacilities] = useState([]);
 
-  const [activeTab, setActiveTab] = useState('upcoming');
-
-  useEffect(() => {
-    if (!user || !['manager', 'admin'].includes(user.role)) {
-      navigate('/dashboard');
-      return;
-    }
-    fetchData();
-  }, []);
-
-  // Real-time updates
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.on('booking_created', (newBooking) => {
-      console.log('New booking received via socket:', newBooking);
-      fetchData();
-    });
-
-    socket.on('booking_cancelled', (data) => {
-      console.log('Booking cancelled via socket:', data);
-      fetchData();
-    });
-
-    return () => {
-      socket.off('booking_created');
-      socket.off('booking_cancelled');
-    };
-  }, [socket]);
-
-  const fetchData = async () => {
+  // Fetch bookings based on user role
+  const fetchBookings = async () => {
     setLoading(true);
     try {
-      console.log('Fetching bookings for admin/manager...');
+      // Use different endpoints based on user role
+      let endpoint;
+      if (currentUser.role === 'employee') {
+        endpoint = '/api/bookings/my-bookings';
+      } else {
+        endpoint = '/api/bookings/all';
+      }
+      
+      console.log('Current user role:', currentUser.role);
+      console.log('Using endpoint:', endpoint);
+      
       const [bookRes, facRes] = await Promise.all([
-        api.get('/api/bookings/all'),
-        api.get('/api/facilities'),
+        api.get(endpoint),
+        api.get('/api/facilities')
       ]);
       
-      console.log('Bookings API response:', bookRes.data);
-      console.log('Facilities API response:', facRes.data);
+      console.log('API response:', bookRes.data);
+      console.log('API response keys:', Object.keys(bookRes.data));
+      console.log('API response data:', bookRes.data.data);
+      console.log('API response bookings:', bookRes.data.bookings);
+      console.log('API response success:', bookRes.data.success);
+      console.log('Full response:', JSON.stringify(bookRes.data, null, 2));
       
-      setBookings(bookRes.data.bookings || []);
+      // Use correct field based on which endpoint was called
+      const bookingsData = bookRes.data.bookings || bookRes.data.data || [];
+      setBookings(bookingsData);
       setFacilities(facRes.data.facilities || []);
-      
-      console.log('Bookings set:', bookRes.data.bookings || []);
-      console.log('Facilities set:', facRes.data.facilities || []);
     } catch (err) {
-      setError('Failed to fetch bookings');
-      console.error('Failed to fetch bookings:', err);
+      console.error('Error fetching bookings:', err);
       console.error('Error status:', err.response?.status);
       console.error('Error message:', err.response?.data?.message);
+      setError('Failed to fetch bookings');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    // Redirect technicians away from booking system
+    if (currentUser?.role === 'technician') {
+      navigate('/dashboard');
+      return;
+    }
+    fetchBookings();
+  }, []);
+
+  // Listen for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleBookingUpdate = () => {
+      fetchBookings();
+    };
+
+    socket.on('booking_created', handleBookingUpdate);
+    socket.on('booking_cancelled', handleBookingUpdate);
+    socket.on('booking_updated', handleBookingUpdate);
+
+    return () => {
+      socket.off('booking_created', handleBookingUpdate);
+      socket.off('booking_cancelled', handleBookingUpdate);
+      socket.off('booking_updated', handleBookingUpdate);
+    };
+  }, [socket]);
+
+  // Cancel booking with role-based permissions
   const handleCancelBooking = async (bookingId) => {
-    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
-    
     setCancellingId(bookingId);
     try {
       await api.patch(`/api/bookings/${bookingId}/cancel`);
       showToast('Booking cancelled successfully', 'success');
-      fetchData();
+      fetchBookings();
     } catch (err) {
-      console.error('Failed to cancel booking', err);
-      showToast(err.response?.data?.message || 'Failed to cancel booking', 'error');
+      showToast(
+        err.response?.data?.message || 'Failed to cancel booking',
+        'error'
+      );
     } finally {
       setCancellingId(null);
     }
   };
 
+  // Edit booking handlers
   const handleEditBooking = (booking) => {
     setEditingBooking(booking);
     setShowEditModal(true);
@@ -106,7 +119,7 @@ function ManagerBookingsPage() {
       showToast('Booking updated successfully', 'success');
       setShowEditModal(false);
       setEditingBooking(null);
-      fetchData();
+      fetchBookings();
     } catch (err) {
       showToast(err.response?.data?.message || 'Failed to update booking', 'error');
     }
@@ -114,69 +127,44 @@ function ManagerBookingsPage() {
 
   // Check if user can cancel this booking
   const canCancelBooking = (booking) => {
-    const bookingDate = new Date(booking.start);
+    const bookingDate = new Date(booking.date);
     const now = new Date();
     const isUpcoming = bookingDate > now;
     
     if (!isUpcoming) return false;
     
-    if (user.role === 'employee') {
-      return booking.user._id === user._id;
+    if (currentUser.role === 'employee') {
+      return booking.user._id === currentUser._id;
     }
     
-    return user.role === 'admin' || user.role === 'manager';
+    return currentUser.role === 'admin' || currentUser.role === 'manager';
   };
 
-  const getFilteredBookings = () => {
-    let filtered = bookings;
-
-    // Search filter
-    if (search) {
-      filtered = filtered.filter(booking => 
-        booking.facility?.name?.toLowerCase().includes(search.toLowerCase()) ||
-        booking.purpose?.toLowerCase().includes(search.toLowerCase()) ||
-        booking.user?.username?.toLowerCase().includes(search.toLowerCase())
-      );
+  // Filter bookings
+  const filteredBookings = bookings.filter(booking => {
+    const matchesSearch = 
+      booking.facility?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      booking.purpose?.toLowerCase().includes(search.toLowerCase()) ||
+      booking.user?.username?.toLowerCase().includes(search.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
+    
+    let matchesDate = true;
+    if (dateFilter === 'upcoming') {
+      matchesDate = new Date(booking.date) > new Date();
+    } else if (dateFilter === 'past') {
+      matchesDate = new Date(booking.date) <= new Date();
     }
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(booking => booking.status === statusFilter);
-    }
-
-    // Facility filter
-    if (facilityFilter !== 'all') {
-      filtered = filtered.filter(b => b.facility._id === facilityFilter);
-    }
-
-    // Date filter (Upcoming vs Past)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (activeTab === 'upcoming') {
-      filtered = filtered.filter(b => new Date(b.start) >= today);
-    } else {
-      filtered = filtered.filter(b => new Date(b.start) < today);
-    }
-
-    return filtered;
-  };
-
-  const currentBookings = getFilteredBookings();
+    
+    return matchesSearch && matchesStatus && matchesDate;
+  });
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'confirmed':
-      case 'Booked':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'cancelled':
-      case 'Cancelled':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'completed':
-      case 'Completed':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+      case 'confirmed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'completed': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
   };
 
@@ -188,20 +176,32 @@ function ManagerBookingsPage() {
       if (isNaN(date.getTime())) return 'Invalid Date';
       
       return date.toLocaleDateString('en-US', {
-        weekday: 'short',
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       });
     } catch (error) {
+      console.error('Date formatting error:', error);
       return 'Invalid Date';
     }
   };
 
   const formatTime = (timeString) => {
+    console.log('formatTime called with:', timeString, typeof timeString);
+    
     if (!timeString) return 'N/A';
     
-    if (typeof timeString === 'string') {
+    // Handle ISO date strings (like "2026-03-13T10:15:00.000Z")
+    if (typeof timeString === 'string' && timeString.includes('T')) {
+      const date = new Date(timeString);
+      const hour = date.getHours();
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour > 12 ? hour - 12 : hour;
+      return `${displayHour}:${minutes} ${ampm}`;
+    }
+    // Handle "HH:MM" format
+    else if (typeof timeString === 'string') {
       const [hours, minutes] = timeString.split(':');
       const hour = parseInt(hours);
       const ampm = hour >= 12 ? 'PM' : 'AM';
@@ -218,27 +218,48 @@ function ManagerBookingsPage() {
     return 'N/A';
   };
 
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-6"></div>
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">
-          All Bookings
+          {currentUser.role === 'employee' ? 'My Bookings' : 'All Bookings'}
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Manage and view all facility bookings
+          {currentUser.role === 'employee' 
+            ? 'View and manage your facility bookings'
+            : 'View and manage all facility bookings'
+          }
         </p>
       </div>
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Search
             </label>
             <input
               type="text"
-              placeholder="Search bookings..."
+              placeholder="Search by facility, purpose, or user..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
@@ -263,46 +284,17 @@ function ManagerBookingsPage() {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Facility
+              Date
             </label>
             <select
-              value={facilityFilter}
-              onChange={(e) => setFacilityFilter(e.target.value)}
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
             >
-              <option value="all">All Facilities</option>
-              {facilities.map(f => (
-                <option key={f._id} value={f._id}>{f.name}</option>
-              ))}
+              <option value="all">All Dates</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="past">Past</option>
             </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Date Filter
-            </label>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setActiveTab('upcoming')}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium transition ${
-                  activeTab === 'upcoming'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                Upcoming
-              </button>
-              <button
-                onClick={() => setActiveTab('completed')}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium transition ${
-                  activeTab === 'completed'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                Past
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -315,9 +307,7 @@ function ManagerBookingsPage() {
       )}
 
       {/* Bookings List */}
-      {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading bookings...</div>
-      ) : currentBookings.length === 0 ? (
+      {filteredBookings.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
           <EmptyState
             icon={
@@ -327,16 +317,21 @@ function ManagerBookingsPage() {
             }
             title="No bookings found"
             description={
-              search || statusFilter !== 'all' || facilityFilter !== 'all'
+              search || statusFilter !== 'all' || dateFilter !== 'all'
                 ? 'Try adjusting your search terms or filters.'
+                : currentUser.role === 'employee'
+                ? 'You haven\'t made any bookings yet.'
                 : 'No bookings have been made yet.'
             }
           />
         </div>
       ) : (
         <div className="space-y-4">
-          {currentBookings.map(booking => (
-            <div key={booking._id} className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+          {filteredBookings.map((booking) => (
+            <div
+              key={booking._id}
+              className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+            >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-3">
@@ -352,14 +347,8 @@ function ManagerBookingsPage() {
                     <div>
                       <span className="text-gray-500 dark:text-gray-400">Date & Time:</span>
                       <p className="text-gray-800 dark:text-gray-200 font-medium">
-                        {formatDate(booking.date || booking.start)} at {formatTime(booking.startTime || booking.start)}
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <span className="text-gray-500 dark:text-gray-400">Booked by:</span>
-                      <p className="text-gray-800 dark:text-gray-200 font-medium">
-                        {booking.user?.username || 'Unknown User'}
+                        {console.log('Booking date:', booking.date, 'startTime:', booking.startTime, 'start:', booking.start)}
+                        {formatDate(booking.date)} at {formatTime(booking.startTime || booking.start)}
                       </p>
                     </div>
                     
@@ -369,6 +358,15 @@ function ManagerBookingsPage() {
                         {booking.purpose || 'No purpose specified'}
                       </p>
                     </div>
+                    
+                    {currentUser.role !== 'employee' && (
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Booked by:</span>
+                        <p className="text-gray-800 dark:text-gray-200 font-medium">
+                          {booking.user?.username || 'Unknown User'}
+                        </p>
+                      </div>
+                    )}
                     
                     <div>
                       <span className="text-gray-500 dark:text-gray-400">Created:</span>
@@ -380,6 +378,16 @@ function ManagerBookingsPage() {
                 </div>
                 
                 <div className="ml-4 flex space-x-2">
+                  {canCancelBooking(booking) && currentUser.role === 'employee' && (
+                    <button
+                      onClick={() => handleCancelBooking(booking._id)}
+                      disabled={cancellingId === booking._id}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+                    >
+                      {cancellingId === booking._id ? 'Cancelling...' : 'Cancel'}
+                    </button>
+                  )}
+                  
                   {booking.status !== 'cancelled' && booking.status !== 'completed' && (
                     <button
                       onClick={() => handleEditBooking(booking)}
@@ -561,4 +569,4 @@ function EditBookingModal({ booking, facilities, onClose, onSave }) {
   );
 }
 
-export default ManagerBookingsPage;
+export default BookingOverviewPage;

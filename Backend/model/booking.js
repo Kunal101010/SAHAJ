@@ -31,10 +31,27 @@ const bookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Booked', 'Cancelled', 'Completed'],
-    default: 'Booked',
+    enum: ['confirmed', 'cancelled', 'completed', 'Booked', 'Cancelled', 'Completed'],
+    default: 'confirmed',
   }
-}, { timestamps: true });
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Virtual fields for frontend compatibility
+bookingSchema.virtual('startTime').get(function() {
+  return this.start.toTimeString().slice(0, 5); // HH:MM format
+});
+
+bookingSchema.virtual('endTime').get(function() {
+  return this.end.toTimeString().slice(0, 5); // HH:MM format
+});
+
+bookingSchema.virtual('dateFormatted').get(function() {
+  return this.date; // Already in YYYY-MM-DD format
+});
 
 const Booking = mongoose.model('Booking', bookingSchema);
 

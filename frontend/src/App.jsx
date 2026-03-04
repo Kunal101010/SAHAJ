@@ -9,6 +9,8 @@ import Layout from './components/Layout';
 import PrivateRoute from './components/PrivateRoute';
 import MaintenanceRequestsPage from './pages/MaintenanceRequestsPage';
 import FacilityBookingPage from './pages/FacilityBookingPage';
+import BookingOverviewPage from './pages/BookingOverviewPage';
+import EmployeeBookingsPage from './pages/EmployeeBookingsPage';
 import SettingsPage from './pages/SettingsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AdminFacilitiesPage from './pages/AdminFacilitiesPage';
@@ -51,6 +53,7 @@ function AnimatedRoutes() {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/maintenance-requests" element={<MaintenanceRequestsPage />} />
               <Route path="/facility-booking" element={<FacilityBookingPage />} />
+              <Route path="/booking-overview" element={<BookingOverviewPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/reports-analytics" element={<ReportsAnalyticsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
@@ -59,7 +62,7 @@ function AnimatedRoutes() {
               <Route path="/admin/maintenance" element={<ManagerMaintenancePage />} />
               <Route path="/admin/technician-assignments" element={<TechnicianAssignmentsPage />} />
               <Route path="/manager/maintenance" element={<ManagerMaintenancePage />} />
-              <Route path="/manager/bookings" element={<ManagerBookingsPage />} />
+              <Route path="/my-bookings" element={<EmployeeBookingsPage />} />
               <Route path="/manager/technician-assignments" element={<TechnicianAssignmentsPage />} />
               <Route path="/technician/maintenance" element={<TechnicianMaintenancePage />} />
             </Route>

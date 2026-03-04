@@ -49,6 +49,7 @@ function Sidebar() {
     { name: 'Maintenance Requests', path: '/maintenance-requests', roles: ['employee', 'manager', 'admin'] },
     { name: 'Technician Tasks', path: '/technician/maintenance', roles: ['technician'] },
     { name: 'Facility Booking', path: '/facility-booking', roles: ['employee', 'manager', 'admin'] },
+    { name: 'Booking Overview', path: '/booking-overview', roles: ['employee', 'manager', 'admin'] },
     { name: 'Reports & Analytics', path: '/reports-analytics', roles: ['manager', 'admin'] },
     { name: 'Notifications', path: '/notifications', roles: ['employee', 'technician', 'manager', 'admin'], badge: unreadCount },
     { name: 'Settings', path: '/settings', roles: ['employee', 'technician', 'manager', 'admin'] },
@@ -59,14 +60,12 @@ function Sidebar() {
     { name: 'User Management', path: '/admin/users' },
     { name: 'Facility Management', path: '/admin/facilities' },
     { name: 'Requests Management', path: '/admin/maintenance' },
-    { name: 'Bookings Overview', path: '/manager/bookings' }, // Reusing manager page for now as it has same functionality
     { name: 'Technician Assignments', path: '/admin/technician-assignments' },
   ];
 
   // Manager-only items
   const managerItems = [
     { name: 'Requests Management', path: '/manager/maintenance' },
-    { name: 'Bookings Overview', path: '/manager/bookings' },
     { name: 'Technician Assignments', path: '/manager/technician-assignments' },
   ];
 

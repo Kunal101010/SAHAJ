@@ -47,12 +47,18 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
       const dateStr = (selectedDate instanceof Date)
         ? selectedDate.toISOString().slice(0, 10)
         : (selectedDate || '').slice(0, 10);
+      console.log('BookFacilityModal - dateStr:', dateStr, 'selectedDate:', selectedDate);
       setFormData((prev) => ({ ...prev, date: dateStr }));
 
       if (facility && facility._id) {
         const fetchBooked = async () => {
           try {
+            const dateStr = (selectedDate instanceof Date)
+              ? selectedDate.toISOString().slice(0, 10)
+              : (selectedDate || '').slice(0, 10);
+            console.log('Fetching booked slots for facility:', facility._id, 'date:', dateStr);
             const res = await api.get(`/api/bookings/facility/${facility._id}?date=${dateStr}`);
+            console.log('Booked slots API response:', res.data);
             setBookedSlots(res.data.bookings || []);
           } catch (err) {
             console.error('Failed to fetch booked slots', err);
@@ -123,8 +129,12 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
       const overlaps = bookedSlots.some(b => {
         const bs = new Date(b.start).getTime();
         const be = new Date(b.end).getTime();
+        console.log('Checking overlap:', { start, end }, 'against:', { bs, be });
         return (start.getTime() < be && end.getTime() > bs);
       });
+
+      console.log('Booked slots:', bookedSlots);
+      console.log('Has overlap:', overlaps);
 
       if (overlaps) {
         showAlert('Error: Selected time overlaps with an existing booking. Please choose a different time.');

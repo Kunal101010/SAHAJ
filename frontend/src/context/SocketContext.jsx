@@ -15,7 +15,7 @@ export const SocketProvider = ({ children }) => {
     useEffect(() => {
         // Only connect if user is logged in
         if (user) {
-            const newSocket = io('http://localhost:5000', {
+            const newSocket = io('http://localhost:3000', {
                 withCredentials: true,
                 // Match server preference — connect via WebSocket directly,
                 // skipping the HTTP polling → upgrade round-trip
