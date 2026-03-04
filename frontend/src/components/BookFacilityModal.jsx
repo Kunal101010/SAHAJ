@@ -44,18 +44,31 @@ function BookFacilityModal({ isOpen, onClose, facility, selectedDate, initialSta
       setFormData((prev) => ({ ...prev, facilityId: facility._id }));
     }
     if (selectedDate) {
-      const dateStr = (selectedDate instanceof Date)
-        ? selectedDate.toISOString().slice(0, 10)
-        : (selectedDate || '').slice(0, 10);
+      // build YYYY-MM-DD without timezone offset issues
+      const dateStr = (() => {
+        if (selectedDate instanceof Date) {
+          const y = selectedDate.getFullYear();
+          const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+          const d = String(selectedDate.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        }
+        return (selectedDate || '').slice(0, 10);
+      })();
       console.log('BookFacilityModal - dateStr:', dateStr, 'selectedDate:', selectedDate);
       setFormData((prev) => ({ ...prev, date: dateStr }));
 
       if (facility && facility._id) {
         const fetchBooked = async () => {
           try {
-            const dateStr = (selectedDate instanceof Date)
-              ? selectedDate.toISOString().slice(0, 10)
-              : (selectedDate || '').slice(0, 10);
+            const dateStr = (() => {
+          if (selectedDate instanceof Date) {
+            const y = selectedDate.getFullYear();
+            const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+            const d = String(selectedDate.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+          }
+          return (selectedDate || '').slice(0, 10);
+        })();
             console.log('Fetching booked slots for facility:', facility._id, 'date:', dateStr);
             const res = await api.get(`/api/bookings/facility/${facility._id}?date=${dateStr}`);
             console.log('Booked slots API response:', res.data);

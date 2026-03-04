@@ -13,10 +13,16 @@ function NotificationBell() {
   const [loading, setLoading] = useState(false);
 
   // Rewrite any maintenance-requests URL to the correct page for the logged-in role
-  const resolveActionUrl = (url) => {
+  const resolveActionUrl = (url, notificationType) => {
     if (url === '/maintenance-requests' && currentUser?.role === 'technician') {
       return '/technician/maintenance';
     }
+    
+    // Redirect booking notifications to booking overview page
+    if (notificationType === 'booking_created' || notificationType === 'booking_updated' || notificationType === 'booking_cancelled') {
+      return '/booking-overview';
+    }
+    
     return url;
   };
 
@@ -178,7 +184,7 @@ function NotificationBell() {
                           if (!notif.isRead) handleMarkAsRead(notif._id);
                           setIsOpen(false);
                           if (notif.actionUrl) {
-                            navigate(resolveActionUrl(notif.actionUrl));
+                            navigate(resolveActionUrl(notif.actionUrl, notif.type));
                           }
                         }}
                       >

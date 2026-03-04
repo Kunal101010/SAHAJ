@@ -19,6 +19,8 @@ function BookingOverviewPage() {
   const [cancellingId, setCancellingId] = useState(null);
   const [editingBooking, setEditingBooking] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
+  const [bookingToCancel, setBookingToCancel] = useState(null);
   const [facilities, setFacilities] = useState([]);
 
   // Fetch bookings based on user role
@@ -92,9 +94,19 @@ function BookingOverviewPage() {
 
   // Cancel booking with role-based permissions
   const handleCancelBooking = async (bookingId) => {
-    setCancellingId(bookingId);
+    // Show custom confirmation modal
+    setBookingToCancel(bookingId);
+    setShowCancelConfirmModal(true);
+  };
+
+  const confirmCancelBooking = async () => {
+    if (!bookingToCancel) return;
+    
+    setCancellingId(bookingToCancel);
+    setShowCancelConfirmModal(false);
+    
     try {
-      await api.patch(`/api/bookings/${bookingId}/cancel`);
+      await api.patch(`/api/bookings/${bookingToCancel}/cancel`);
       showToast('Booking cancelled successfully', 'success');
       fetchBookings();
     } catch (err) {
@@ -104,7 +116,13 @@ function BookingOverviewPage() {
       );
     } finally {
       setCancellingId(null);
+      setBookingToCancel(null);
     }
+  };
+
+  const cancelCancelBooking = () => {
+    setShowCancelConfirmModal(false);
+    setBookingToCancel(null);
   };
 
   // Edit booking handlers
@@ -114,6 +132,18 @@ function BookingOverviewPage() {
   };
 
   const handleUpdateBooking = async (updatedData) => {
+    // Additional safety check to prevent editing past bookings
+    const bookingDate = new Date(editingBooking.date);
+    const now = new Date();
+    const isUpcoming = bookingDate > now;
+    
+    if (!isUpcoming) {
+      showToast('Cannot edit past bookings', 'error');
+      setShowEditModal(false);
+      setEditingBooking(null);
+      return;
+    }
+    
     try {
       await api.patch(`/api/bookings/${editingBooking._id}`, updatedData);
       showToast('Booking updated successfully', 'success');
@@ -132,6 +162,25 @@ function BookingOverviewPage() {
     const isUpcoming = bookingDate > now;
     
     if (!isUpcoming) return false;
+    
+    if (currentUser.role === 'employee') {
+      return booking.user._id === currentUser._id;
+    }
+    
+    return currentUser.role === 'admin' || currentUser.role === 'manager';
+  };
+
+  // Check if user can edit this booking
+  const canEditBooking = (booking) => {
+    const bookingDate = new Date(booking.date);
+    const now = new Date();
+    const isUpcoming = bookingDate > now;
+    
+    // Past bookings cannot be edited
+    if (!isUpcoming) return false;
+    
+    // Cancelled and completed bookings cannot be edited
+    if (booking.status === 'cancelled' || booking.status === 'completed') return false;
     
     if (currentUser.role === 'employee') {
       return booking.user._id === currentUser._id;
@@ -388,7 +437,7 @@ function BookingOverviewPage() {
                     </button>
                   )}
                   
-                  {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                  {canEditBooking(booking) && (
                     <button
                       onClick={() => handleEditBooking(booking)}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
@@ -400,6 +449,47 @@ function BookingOverviewPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">Cancel Booking</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Are you sure you want to cancel this booking?</p>
+              </div>
+            </div>
+            
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                <strong>Warning:</strong> This action cannot be undone.
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={cancelCancelBooking}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              >
+                Keep Booking
+              </button>
+              <button
+                onClick={confirmCancelBooking}
+                disabled={cancellingId === bookingToCancel}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {cancellingId === bookingToCancel ? 'Cancelling...' : 'Cancel Booking'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -421,6 +511,7 @@ function BookingOverviewPage() {
 
 // Edit Booking Modal Component
 function EditBookingModal({ booking, facilities, onClose, onSave }) {
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     facility: booking.facility._id,
     date: booking.date || new Date(booking.start).toISOString().split('T')[0],
@@ -430,6 +521,7 @@ function EditBookingModal({ booking, facilities, onClose, onSave }) {
   });
   const [loading, setLoading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -449,18 +541,29 @@ function EditBookingModal({ booking, facilities, onClose, onSave }) {
   };
 
   const handleCancelBooking = async () => {
-    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
-    
+    // Show custom confirmation modal
+    setShowCancelConfirm(true);
+  };
+
+  const confirmCancelBooking = async () => {
     setCancelling(true);
+    setShowCancelConfirm(false);
+    
     try {
       await api.patch(`/api/bookings/${booking._id}/cancel`);
       window.location.reload(); // Refresh to show updated booking
     } catch (err) {
       console.error('Failed to cancel booking:', err);
-      alert('Failed to cancel booking: ' + (err.response?.data?.message || err.message));
+      // Use toast instead of alert
+      const { showToast } = useToast();
+      showToast('Failed to cancel booking: ' + (err.response?.data?.message || err.message), 'error');
     } finally {
       setCancelling(false);
     }
+  };
+
+  const cancelCancelBooking = () => {
+    setShowCancelConfirm(false);
   };
 
   return (
@@ -564,6 +667,47 @@ function EditBookingModal({ booking, facilities, onClose, onSave }) {
             </button>
           </div>
         </form>
+        
+        {/* Cancel Confirmation Modal */}
+        {showCancelConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mr-4">
+                  <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">Cancel Booking</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Are you sure you want to cancel this booking?</p>
+                </div>
+              </div>
+              
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <strong>Warning:</strong> This action cannot be undone.
+                </p>
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={cancelCancelBooking}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Keep Booking
+                </button>
+                <button
+                  onClick={confirmCancelBooking}
+                  disabled={cancelling}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {cancelling ? 'Cancelling...' : 'Cancel Booking'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
