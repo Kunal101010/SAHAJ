@@ -112,7 +112,7 @@ function EmployeeBookingsPage() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'booked': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
       case 'completed': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
@@ -212,7 +212,7 @@ function EmployeeBookingsPage() {
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
             >
               <option value="all">All Status</option>
-              <option value="confirmed">Confirmed</option>
+              <option value="booked">Booked</option>
               <option value="cancelled">Cancelled</option>
               <option value="completed">Completed</option>
             </select>

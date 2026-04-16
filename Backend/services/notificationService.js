@@ -146,6 +146,14 @@ const notificationService = {
     actionUrl: '/manager/bookings'
   }),
 
+  bookingCompletedNotification: (bookingId, facilityName, bookingDate) => ({
+    type: 'booking_completed',
+    title: 'Booking Completed',
+    message: `Your booking for ${facilityName} on ${bookingDate} has been completed`,
+    relatedBooking: bookingId,
+    actionUrl: '/my-bookings'
+  }),
+
   facilityMaintenanceScheduledNotification: (facilityId, facilityName) => ({
     type: 'facility_maintenance_scheduled',
     title: 'Facility Maintenance Scheduled',

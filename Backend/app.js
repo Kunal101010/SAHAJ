@@ -3,6 +3,7 @@ const app = express()
 const cors = require("cors");
 const http = require('http'); // Import HTTP module
 const { initSocket } = require('./socket'); // Import socket init function
+const bookingStatusService = require('./services/bookingStatusService'); // Import booking status service
 
 // Import Route Handlers
 const authRoutes = require('./routes/authRoutes');
@@ -54,5 +55,21 @@ initSocket(server);
 // Start the server
 server.listen(port, () => {
     console.log("Running on port " + port)
+    
+    // Start the booking status service
+    bookingStatusService.start();
 })
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+    console.log('Shutting down gracefully...');
+    bookingStatusService.stop();
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    console.log('Shutting down gracefully...');
+    bookingStatusService.stop();
+    process.exit(0);
+});
 

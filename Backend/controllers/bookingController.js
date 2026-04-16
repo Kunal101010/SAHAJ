@@ -26,7 +26,7 @@ exports.createBooking = async (req, res) => {
     // Check overlap: existing.start < new.end && existing.end > new.start
     const overlap = await Booking.findOne({
       facility: facilityId,
-      status: 'Booked',
+      status: 'booked',
       $or: [
         { start: { $lt: endDate }, end: { $gt: startDate } }
       ]
@@ -138,8 +138,8 @@ exports.getFacilityBookings = async (req, res) => {
       };
     }
 
-    // only return booked (not cancelled) - include both Booked and confirmed
-    filter = { ...filter, status: { $in: ['Booked', 'confirmed'] } };
+    // only return booked (not cancelled)
+    filter = { ...filter, status: 'booked' };
 
     console.log('Final filter:', filter);
 
@@ -165,7 +165,7 @@ exports.getBookingsByDate = async (req, res) => {
     const bookings = await Booking.find({
       start: { $lt: endOfDay },
       end: { $gt: startOfDay },
-      status: 'Booked'
+      status: 'booked'
     }).populate('facility user').sort('start');
 
     res.json({ success: true, bookings });
@@ -201,7 +201,7 @@ exports.updateBooking = async (req, res) => {
     const overlap = await Booking.findOne({
       _id: { $ne: req.params.id },
       facility: facility || booking.facility,
-      status: { $in: ['confirmed', 'Booked'] },
+      status: 'booked',
       $or: [
         { start: { $lt: endDate }, end: { $gt: startDate } }
       ]

@@ -4,7 +4,7 @@ const User = require("../model/user")
 
 const createAdminUser = async () => {
   try {
-    const adminExists = await User.findOne({ 
+    const adminExists = await User.findOne({
       $or: [{ email: 'admin@sahaj.com' }, { username: 'admin' }]
     });
 
@@ -36,11 +36,11 @@ const createAdminUser = async () => {
 };
 
 exports.connectDatabase = async () => {
-    await mongoose.connect(process.env.MONGO_URI)
-    console.log("Database connected successfully")
-    createAdminUser();
+  await mongoose.connect(process.env.MONGO_URI)
+  console.log("Database connected successfully")
+  createAdminUser();
 
-   
+
 
 }
 

@@ -10,6 +10,7 @@ const {
   getBookingStats,
   updateBooking,
 } = require('../controllers/bookingController');
+const bookingStatusService = require('../services/bookingStatusService');
 
 const router = express.Router();
 
@@ -40,5 +41,31 @@ router.patch('/:id/cancel', cancelBooking);
 
 // Get Booking Stats (Admin/Manager)
 router.get('/stats', authorize('admin', 'manager'), getBookingStats);
+
+// Manual trigger for updating past booking statuses (Admin/Manager only - for testing)
+router.post('/update-status', authorize('admin', 'manager'), async (req, res) => {
+  try {
+    await bookingStatusService.forceUpdate();
+    res.json({ 
+      success: true, 
+      message: 'Booking status update triggered successfully' 
+    });
+  } catch (error) {
+    console.error('Error updating booking statuses:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to update booking statuses' 
+    });
+  }
+});
+
+// Get booking status service status (Admin/Manager only)
+router.get('/status-service', authorize('admin', 'manager'), (req, res) => {
+  const status = bookingStatusService.getStatus();
+  res.json({ 
+    success: true, 
+    data: status 
+  });
+});
 
 module.exports = router;

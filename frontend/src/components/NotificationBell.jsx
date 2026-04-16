@@ -19,7 +19,7 @@ function NotificationBell() {
     }
     
     // Redirect booking notifications to booking overview page
-    if (notificationType === 'booking_created' || notificationType === 'booking_updated' || notificationType === 'booking_cancelled') {
+    if (notificationType === 'booking_created' || notificationType === 'booking_updated' || notificationType === 'booking_cancelled' || notificationType === 'booking_completed') {
       return '/booking-overview';
     }
     
@@ -85,13 +85,14 @@ function NotificationBell() {
 
   const getNotificationIcon = (type) => {
     const icons = {
-      request_created: '📝',
-      request_assigned: '👤',
-      request_status_changed: '⚙️',
-      request_completed: '✅',
-      booking_created: '📅',
-      facility_maintenance_scheduled: '🔧',
-      default: '🔔'
+      request_created: ' ',
+      request_assigned: ' ',
+      request_status_changed: ' ',
+      request_completed: ' ',
+      booking_created: ' ',
+      booking_completed: ' ',
+      facility_maintenance_scheduled: ' ',
+      default: ' '
     };
     return icons[type] || icons.default;
   };
