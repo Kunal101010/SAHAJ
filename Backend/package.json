@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon app.js",
-    "seed-admin": "node seedAdmin.js"
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "seed-admin": "node seedAdmin.js",
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
@@ -22,5 +24,8 @@
     "nodemailer": "^7.0.12",
     "nodemon": "^3.1.11",
     "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0"
   }
 }
