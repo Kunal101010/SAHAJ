@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'https://sahaj-li4j.onrender.com';
 
 // 1. Create a central Axios instance for all API calls
 const api = axios.create({

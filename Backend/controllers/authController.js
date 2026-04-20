@@ -16,6 +16,8 @@ const generateToken = (userId, role) => {
   );
 };
 
+exports.generateToken = generateToken;
+
 const formatUserResponse = (user) => ({
   id: user._id,
   username: user.username,

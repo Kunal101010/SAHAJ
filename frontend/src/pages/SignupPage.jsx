@@ -144,7 +144,7 @@ function SignupPage() {
 
       if (response.data.success) {
         loginUser(response.data.token, response.data.user);
-        navigate('/dashboard');
+        navigate('/login');
       }
     } catch (err) {
       setError(

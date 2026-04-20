@@ -4,8 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../utils/auth';
 import api from '../services/api';
 import { useSocket } from '../context/SocketContext';
-// import Sidebar from '../components/Sidebar';
-// import TopBar from '../components/TopBar';
 import StatCard from '../components/StatCard';
 import BarChartComponent from '../components/BarChartComponent';
 import PieChartComponent from '../components/PieChartComponent';

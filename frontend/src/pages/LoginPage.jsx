@@ -88,7 +88,7 @@ function LoginPage() {
     validateField(name, value);
   };
 
-  // ── Step 1: send OTP ────────────────────────────────────────────────────────
+  //  send OTP
   const handleSendOtp = async (e) => {
     e.preventDefault();
     
@@ -126,7 +126,7 @@ function LoginPage() {
     }
   };
 
-  // ── Step 2: verify OTP ──────────────────────────────────────────────────────
+  // verify OTP
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     const otpString = otp.join('');
@@ -154,7 +154,7 @@ function LoginPage() {
     }
   };
 
-  // ── OTP input helpers ───────────────────────────────────────────────────────
+  // OTP input helpers
   const handleOtpChange = (index, value) => {
     if (!/^\d?$/.test(value)) return; // only digits
     const updated = [...otp];
